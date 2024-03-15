@@ -9,6 +9,7 @@ from PIL import Image
 from tqdm import tqdm
 
 import torch
+from torch.cuda import max_memory_allocated, max_memory_reserved
 import torchvision
 
 from model.modules.flow_comp_raft import RAFT_bi
@@ -472,5 +473,7 @@ if __name__ == '__main__':
     imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
     
     print(f'\nAll results are saved in {save_root}')
+    print(f'Peak VRAM: {round(max_memory_allocated()/1024**3, 1)} GB.')
+    print(f'Peak VRAM: {round(max_memory_reserved()/1024**3, 1)} GB.')
     
     torch.cuda.empty_cache()
