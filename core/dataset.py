@@ -29,13 +29,14 @@ class TrainDataset(torch.utils.data.Dataset):
         if self.load_flow:
             assert os.path.exists(self.flow_root)
         
-        json_path = os.path.join('./datasets', args['name'], 'train.json')
+#         json_path = os.path.join('./datasets', args['name'], 'train.json')
 
-        with open(json_path, 'r') as f:
-            self.video_train_dict = json.load(f)
-        self.video_names = sorted(list(self.video_train_dict.keys()))
+#         with open(json_path, 'r') as f:
+#             self.video_train_dict = json.load(f)
+#         self.video_names = sorted(list(self.video_train_dict.keys()))
 
-        # self.video_names = sorted(os.listdir(self.video_root))
+        self.video_names = sorted(os.listdir(self.video_root))
+  
         self.video_dict = {}
         self.frame_dict = {}
 
