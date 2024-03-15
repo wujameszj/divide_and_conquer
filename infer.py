@@ -214,7 +214,9 @@ if __name__ == '__main__':
         '--save_frames', action='store_true', help='Save output frames. Default: False')
     parser.add_argument(
         '--fp16', action='store_true', help='Use fp16 (half precision) during inference. Default: fp32 (single precision).')
-
+    parser.add_argument(
+        '--output_video', action='store_true', help='Default: False')
+    
     args = parser.parse_args()
 
     # Use fp16 precision during inference to reduce running memory cost
@@ -467,10 +469,11 @@ if __name__ == '__main__':
     #     masked_frame_for_save = [i[10:-10,10:-10] for i in masked_frame_for_save]
     
     # save videos frame
-    masked_frame_for_save = [cv2.resize(f, out_size) for f in masked_frame_for_save]
-    comp_frames = [cv2.resize(f, out_size) for f in comp_frames]
-    imageio.mimwrite(os.path.join(save_root, 'masked_in.mp4'), masked_frame_for_save, fps=fps, quality=7)
-    imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
+    if args.output_video:
+      masked_frame_for_save = [cv2.resize(f, out_size) for f in masked_frame_for_save]
+      comp_frames = [cv2.resize(f, out_size) for f in comp_frames]
+      imageio.mimwrite(os.path.join(save_root, 'masked_in.mp4'), masked_frame_for_save, fps=fps, quality=7)
+      imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
     
     print(f'\nAll results are saved in {save_root}')
     print(f'Peak VRAM: {round(max_memory_allocated()/1024**3, 1)} GB.')
