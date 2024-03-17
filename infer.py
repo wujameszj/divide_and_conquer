@@ -216,6 +216,8 @@ if __name__ == '__main__':
         '--fp16', action='store_true', help='Use fp16 (half precision) during inference. Default: fp32 (single precision).')
     parser.add_argument(
         '--output_video', action='store_true', help='Default: False')
+    parser.add_argument(
+        '--model', type=str, default='weights/ProPainter.pth', help='Path of propainter model')
     
     args = parser.parse_args()
 
@@ -289,8 +291,13 @@ if __name__ == '__main__':
     ##############################################
     # set up ProPainter model
     ##############################################
-    ckpt_path = load_file_from_url(url=os.path.join(pretrain_model_url, 'ProPainter.pth'), 
-                                    model_dir='weights', progress=True, file_name=None)
+    if args.model == 'ProPainter/weights/ProPainter.pth':
+      ckpt_path = load_file_from_url(
+        url=os.path.join(pretrain_model_url, 'ProPainter.pth'), 
+        model_dir='weights', progress=True, file_name=None)
+    else:
+      ckpt_path = args.model
+    
     model = InpaintGenerator(model_path=ckpt_path).to(device)
     model.eval()
 
