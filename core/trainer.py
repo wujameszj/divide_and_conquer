@@ -331,12 +331,14 @@ class Trainer:
         os.makedirs('logs', exist_ok=True)
 
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging.INFO, datefmt="%a, %d %b %Y %H:%M:%S",
             format="%(asctime)s %(filename)s[line:%(lineno)d]"
             "%(levelname)s %(message)s",
-            datefmt="%a, %d %b %Y %H:%M:%S",
-            filename=f"logs/{self.config['save_dir'].split('/')[-1]}.log",
-            filemode='w')
+            filename=f"logs/{self.config['save_dir'].split('/')[-1]}.log", filemode='w')
+        
+        if self.config['global_rank'] == 0:
+            self._lr = self.get_lr()
+            print('LR:', self._lr)
 
         while True:
             self.epoch += 1
@@ -350,6 +352,11 @@ class Trainer:
 
     def _train_epoch(self, pbar):
         """Process input and calculate loss every training epoch"""
+
+        if self.config['global_rank'] == 0 and self._lr != self.get_lr():
+            self._lr = self.get_lr()
+            print('LR:', self._lr)
+
         device = self.config['device']
         train_data = self.prefetcher.next()
         while train_data is not None:
