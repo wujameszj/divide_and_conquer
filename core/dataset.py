@@ -28,6 +28,7 @@ class TrainDataset(torch.utils.data.Dataset):
         self.load_flow = args['load_flow']
         if self.load_flow:
             assert os.path.exists(self.flow_root)
+            print('Will load pre-computed flow.')
         
 #         json_path = os.path.join('./datasets', args['name'], 'train.json')
 
