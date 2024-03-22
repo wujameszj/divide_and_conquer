@@ -212,18 +212,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--save_frames', action='store_true', help='Save output frames. Default: False')
     parser.add_argument(
-        '--fp16', action='store_true', help='Use fp16 (half precision) during inference. Default: fp32 (single precision).')
-    parser.add_argument(
         '--output_video', action='store_true', help='Default: False')
     parser.add_argument(
         '--model', type=str, default='weights/ProPainter.pth', help='Path of propainter model')
     
     args = parser.parse_args()
-
-    # Use fp16 precision during inference to reduce running memory cost
-    use_half = True if args.fp16 else False 
-    if device == torch.device('cpu'):
-        use_half = False
 
     frames, fps, size, video_name = read_frame_from_videos(args.video)
     if not args.width == -1 and not args.height == -1:
