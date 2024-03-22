@@ -268,7 +268,6 @@ if __name__ == '__main__':
     frames = to_tensors()(frames).unsqueeze(0) * 2 - 1    
     flow_masks = to_tensors()(flow_masks).unsqueeze(0)
     masks_dilated = to_tensors()(masks_dilated).unsqueeze(0)
-    frames, flow_masks, masks_dilated = frames.to(device), flow_masks.to(device), masks_dilated.to(device)
 
     
     ##############################################
@@ -285,6 +284,7 @@ if __name__ == '__main__':
         p.requires_grad = False
     fix_flow_complete.to(device)
     fix_flow_complete.eval()
+    fix_flow_complete = fix_flow_complete.half()
 
 
     ##############################################
@@ -299,6 +299,7 @@ if __name__ == '__main__':
     
     model = InpaintGenerator(model_path=ckpt_path).to(device)
     model.eval()
+    model = model.half()
 
     
     ##############################################
@@ -323,31 +324,25 @@ if __name__ == '__main__':
             for f in trange(0, video_length, short_clip_len, desc='RAFT'):
                 end_f = min(video_length, f + short_clip_len)
                 if f == 0:
-                    flows_f, flows_b = fix_raft(frames[:,f:end_f], iters=args.raft_iter)
+                    flows_f, flows_b = fix_raft(frames[:,f:end_f].cuda(), iters=args.raft_iter)
                 else:
-                    flows_f, flows_b = fix_raft(frames[:,f-1:end_f], iters=args.raft_iter)
+                    flows_f, flows_b = fix_raft(frames[:,f-1:end_f].cuda(), iters=args.raft_iter)
                 
-                gt_flows_f_list.append(flows_f)
-                gt_flows_b_list.append(flows_b)
-                empty_cache()
+                gt_flows_f_list.append(flows_f.cpu())
+                gt_flows_b_list.append(flows_b.cpu())
+                
+                del flows_f, flows_b; empty_cache()
                 
             gt_flows_f = torch.cat(gt_flows_f_list, dim=1)
             gt_flows_b = torch.cat(gt_flows_b_list, dim=1)
             gt_flows_bi = (gt_flows_f, gt_flows_b)
         else:
-            gt_flows_bi = fix_raft(frames, iters=args.raft_iter)
-            empty_cache()
+            gt_flows_bi = fix_raft(frames.cuda(), iters=args.raft_iter).cpu()
+        empty_cache()
 
 
         print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
         reset_peak_memory_stats()
-
-
-        if use_half:
-            frames, flow_masks, masks_dilated = frames.half(), flow_masks.half(), masks_dilated.half()
-            gt_flows_bi = (gt_flows_bi[0].half(), gt_flows_bi[1].half())
-            fix_flow_complete = fix_flow_complete.half()
-            model = model.half()
 
         
         # ---- complete flow ----
