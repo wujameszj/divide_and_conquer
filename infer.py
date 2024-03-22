@@ -484,6 +484,8 @@ if __name__ == '__main__':
                     
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
 
+        del selected_imgs, selected_masks, selected_update_masks, selected_pred_flows_bi; empty_cache()
+
 
     print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     reset_peak_memory_stats()
@@ -511,5 +513,4 @@ if __name__ == '__main__':
         imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
     
     print(f'\nAll results are saved in {save_root}')
-    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     empty_cache()
