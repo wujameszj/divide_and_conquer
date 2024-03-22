@@ -341,7 +341,7 @@ if __name__ == '__main__':
         empty_cache()
 
 
-        print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
         reset_peak_memory_stats()
 
         
@@ -357,22 +357,6 @@ if __name__ == '__main__':
                 e_f = min(flow_length, f + args.subvideo_length + pad_len)
                 pad_len_s = max(0, f) - s_f
                 pad_len_e = e_f - min(flow_length, f + args.subvideo_length)
-
-                # pred_flows_bi_sub, _ = fix_flow_complete.forward_bidirect_flow(
-                #     (gt_flows_bi[0][:, s_f:e_f].cuda().half(),
-                #      gt_flows_bi[1][:, s_f:e_f].cuda().half()), 
-                #     flow_masks[:, s_f:e_f+1].cuda().half())
-
-                # pred_flows_bi_sub = fix_flow_complete.combine_flow(
-                #     (gt_flows_bi[0][:, s_f:e_f].cuda().half(), 
-                #      gt_flows_bi[1][:, s_f:e_f].cuda().half()), 
-                #     pred_flows_bi_sub, 
-                #     flow_masks[:, s_f:e_f+1].cuda().half())
-
-                # pred_flows_f.append(pred_flows_bi_sub[0][:, pad_len_s:e_f-s_f-pad_len_e].cpu())
-                # pred_flows_b.append(pred_flows_bi_sub[1][:, pad_len_s:e_f-s_f-pad_len_e].cpu())
-
-                # del pred_flows_bi_sub; empty_cache()
 
                 _flow_f = gt_flows_bi[0][:, s_f:e_f].cuda().half()
                 _flow_b = gt_flows_bi[1][:, s_f:e_f].cuda().half()
@@ -402,7 +386,7 @@ if __name__ == '__main__':
         del gt_flows_bi, flow_masks; empty_cache()
 
 
-        print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
         reset_peak_memory_stats()
 
 
@@ -455,7 +439,7 @@ if __name__ == '__main__':
             del prop_imgs, updated_local_masks; empty_cache()
 
 
-    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     reset_peak_memory_stats()
 
 
@@ -496,7 +480,7 @@ if __name__ == '__main__':
             binary_masks = masks_dilated[0, neighbor_ids, :, :, :].permute(
                 0, 2, 3, 1).numpy().astype(np.uint8)
 
-            for i in range(len(neighbor_ids)):
+            for i in range(l_t):
                 idx = neighbor_ids[i]
                 img = np.array(pred_img[i]).astype(np.uint8) * binary_masks[i] \
                     + ori_frames[idx] * (1 - binary_masks[i])
@@ -508,7 +492,7 @@ if __name__ == '__main__':
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
 
 
-    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     reset_peak_memory_stats()
 
 
@@ -528,10 +512,10 @@ if __name__ == '__main__':
     
     # save videos frame
     if args.output_video:
-      masked_frame_for_save = [cv2.resize(f, out_size) for f in masked_frame_for_save]
-      comp_frames = [cv2.resize(f, out_size) for f in comp_frames]
-      imageio.mimwrite(os.path.join(save_root, 'masked_in.mp4'), masked_frame_for_save, fps=fps, quality=7)
-      imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
+        masked_frame_for_save = [cv2.resize(f, out_size) for f in masked_frame_for_save]
+        comp_frames = [cv2.resize(f, out_size) for f in comp_frames]
+        imageio.mimwrite(os.path.join(save_root, 'masked_in.mp4'), masked_frame_for_save, fps=fps, quality=7)
+        imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
     
     print(f'\nAll results are saved in {save_root}')
     print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
