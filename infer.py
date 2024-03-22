@@ -9,7 +9,7 @@ from PIL import Image
 from tqdm import tqdm
 
 import torch
-from torch.cuda import max_memory_allocated, max_memory_reserved
+from torch.cuda import max_memory_allocated, max_memory_reserved, reset_peak_memory_stats, empty_cache
 import torchvision
 
 from model.modules.flow_comp_raft import RAFT_bi
@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
     
     ##############################################
-    # set up RAFT and flow competition model
+    # set up RAFT and flow completion model
     ##############################################
     ckpt_path = load_file_from_url(url=os.path.join(pretrain_model_url, 'raft-things.pth'), 
                                     model_dir='weights', progress=True, file_name=None)
@@ -330,14 +330,18 @@ if __name__ == '__main__':
                 
                 gt_flows_f_list.append(flows_f)
                 gt_flows_b_list.append(flows_b)
-                torch.cuda.empty_cache()
+                empty_cache()
                 
             gt_flows_f = torch.cat(gt_flows_f_list, dim=1)
             gt_flows_b = torch.cat(gt_flows_b_list, dim=1)
             gt_flows_bi = (gt_flows_f, gt_flows_b)
         else:
             gt_flows_bi = fix_raft(frames, iters=args.raft_iter)
-            torch.cuda.empty_cache()
+            empty_cache()
+
+
+        print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        reset_peak_memory_stats()
 
 
         if use_half:
@@ -367,7 +371,7 @@ if __name__ == '__main__':
 
                 pred_flows_f.append(pred_flows_bi_sub[0][:, pad_len_s:e_f-s_f-pad_len_e])
                 pred_flows_b.append(pred_flows_bi_sub[1][:, pad_len_s:e_f-s_f-pad_len_e])
-                torch.cuda.empty_cache()
+                empty_cache()
                 
             pred_flows_f = torch.cat(pred_flows_f, dim=1)
             pred_flows_b = torch.cat(pred_flows_b, dim=1)
@@ -375,8 +379,12 @@ if __name__ == '__main__':
         else:
             pred_flows_bi, _ = fix_flow_complete.forward_bidirect_flow(gt_flows_bi, flow_masks)
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
-            torch.cuda.empty_cache()
-            
+            empty_cache()
+
+
+        print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        reset_peak_memory_stats()
+
 
         # ---- image propagation ----
         masked_frames = frames * (1 - masks_dilated)
@@ -402,7 +410,7 @@ if __name__ == '__main__':
                 
                 updated_frames.append(updated_frames_sub[:, pad_len_s:e_f-s_f-pad_len_e])
                 updated_masks.append(updated_masks_sub[:, pad_len_s:e_f-s_f-pad_len_e])
-                torch.cuda.empty_cache()
+                empty_cache()
                 
             updated_frames = torch.cat(updated_frames, dim=1)
             updated_masks = torch.cat(updated_masks, dim=1)
@@ -411,9 +419,13 @@ if __name__ == '__main__':
             prop_imgs, updated_local_masks = model.img_propagation(masked_frames, pred_flows_bi, masks_dilated, 'nearest')
             updated_frames = frames * (1 - masks_dilated) + prop_imgs.view(b, t, 3, h, w) * masks_dilated
             updated_masks = updated_local_masks.view(b, t, 1, h, w)
-            torch.cuda.empty_cache()
-            
-    
+            empty_cache()
+
+
+    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+    reset_peak_memory_stats()
+
+
     ori_frames = frames_inp
     comp_frames = [None] * video_length
 
@@ -459,8 +471,9 @@ if __name__ == '__main__':
                     
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
         
-        torch.cuda.empty_cache()
-                
+    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+    reset_peak_memory_stats()
+
     # save each frame
     if args.save_frames:
         for idx in range(video_length):
@@ -483,7 +496,5 @@ if __name__ == '__main__':
       imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
     
     print(f'\nAll results are saved in {save_root}')
-    print(f'Peak VRAM: {round(max_memory_allocated()/1024**3, 1)} GB.')
-    print(f'Peak VRAM: {round(max_memory_reserved()/1024**3, 1)} GB.')
-    
-    torch.cuda.empty_cache()
+    print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+    empty_cache()
