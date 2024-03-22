@@ -6,7 +6,7 @@ import imageio
 import numpy as np
 import scipy.ndimage
 from PIL import Image
-from tqdm import tqdm
+from tqdm import trange
 
 import torch
 from torch.cuda import max_memory_allocated, max_memory_reserved, reset_peak_memory_stats, empty_cache
@@ -321,7 +321,7 @@ if __name__ == '__main__':
         # use fp32 for RAFT
         if frames.size(1) > short_clip_len:
             gt_flows_f_list, gt_flows_b_list = [], []
-            for f in range(0, video_length, short_clip_len):
+            for f in trange(0, video_length, short_clip_len, desc='RAFT'):
                 end_f = min(video_length, f + short_clip_len)
                 if f == 0:
                     flows_f, flows_b = fix_raft(frames[:,f:end_f], iters=args.raft_iter)
@@ -356,7 +356,8 @@ if __name__ == '__main__':
         if flow_length > args.subvideo_length:
             pred_flows_f, pred_flows_b = [], []
             pad_len = 5
-            for f in range(0, flow_length, args.subvideo_length):
+            
+            for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion'):
                 s_f = max(0, f - pad_len)
                 e_f = min(flow_length, f + args.subvideo_length + pad_len)
                 pad_len_s = max(0, f) - s_f
@@ -392,7 +393,8 @@ if __name__ == '__main__':
         if video_length > subvideo_length_img_prop:
             updated_frames, updated_masks = [], []
             pad_len = 10
-            for f in range(0, video_length, subvideo_length_img_prop):
+
+            for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation'):
                 s_f = max(0, f - pad_len)
                 e_f = min(video_length, f + subvideo_length_img_prop + pad_len)
                 pad_len_s = max(0, f) - s_f
@@ -436,12 +438,13 @@ if __name__ == '__main__':
         ref_num = -1
     
     # ---- feature propagation + transformer ----
-    for f in tqdm(range(0, video_length, neighbor_stride)):
+    for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer'):
         neighbor_ids = [
             i for i in range(max(0, f - neighbor_stride),
                                 min(video_length, f + neighbor_stride + 1))
         ]
         ref_ids = get_ref_index(f, neighbor_ids, video_length, args.ref_stride, ref_num)
+
         selected_imgs = updated_frames[:, neighbor_ids + ref_ids, :, :, :]
         selected_masks = masks_dilated[:, neighbor_ids + ref_ids, :, :, :]
         selected_update_masks = updated_masks[:, neighbor_ids + ref_ids, :, :, :]
