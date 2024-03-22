@@ -475,24 +475,27 @@ if __name__ == '__main__':
         ]
         ref_ids = get_ref_index(f, neighbor_ids, video_length, args.ref_stride, ref_num)
 
-        selected_imgs = updated_frames[:, neighbor_ids + ref_ids, :, :, :]
-        selected_masks = masks_dilated[:, neighbor_ids + ref_ids, :, :, :]
-        selected_update_masks = updated_masks[:, neighbor_ids + ref_ids, :, :, :]
-        selected_pred_flows_bi = (pred_flows_bi[0][:, neighbor_ids[:-1], :, :, :], pred_flows_bi[1][:, neighbor_ids[:-1], :, :, :])
+        selected_imgs = updated_frames[:, neighbor_ids + ref_ids, :, :, :].cuda().half()
+        selected_masks = masks_dilated[:, neighbor_ids + ref_ids, :, :, :].cuda().half()
+        selected_update_masks = updated_masks[:, neighbor_ids + ref_ids, :, :, :].cuda().half()
+        selected_pred_flows_bi = (
+            pred_flows_bi[0][:, neighbor_ids[:-1], :, :, :].cuda().half(),
+            pred_flows_bi[1][:, neighbor_ids[:-1], :, :, :].cuda().half())
         
         with torch.no_grad():
             # 1.0 indicates mask
             l_t = len(neighbor_ids)
             
             # pred_img = selected_imgs # results of image propagation
-            pred_img = model(selected_imgs, selected_pred_flows_bi, selected_masks, selected_update_masks, l_t)
+            pred_img = model(selected_imgs, selected_pred_flows_bi, selected_masks, selected_update_masks, l_t).cpu()
             
             pred_img = pred_img.view(-1, 3, h, w)
-
             pred_img = (pred_img + 1) / 2
-            pred_img = pred_img.cpu().permute(0, 2, 3, 1).numpy() * 255
-            binary_masks = masks_dilated[0, neighbor_ids, :, :, :].cpu().permute(
+            pred_img = pred_img.permute(0, 2, 3, 1).numpy() * 255
+
+            binary_masks = masks_dilated[0, neighbor_ids, :, :, :].permute(
                 0, 2, 3, 1).numpy().astype(np.uint8)
+
             for i in range(len(neighbor_ids)):
                 idx = neighbor_ids[i]
                 img = np.array(pred_img[i]).astype(np.uint8) * binary_masks[i] \
@@ -503,9 +506,11 @@ if __name__ == '__main__':
                     comp_frames[idx] = comp_frames[idx].astype(np.float32) * 0.5 + img.astype(np.float32) * 0.5
                     
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
-        
+
+
     print(f'Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     reset_peak_memory_stats()
+
 
     # save each frame
     if args.save_frames:
