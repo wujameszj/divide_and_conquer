@@ -24,6 +24,7 @@ warnings.filterwarnings("ignore")
 
 pretrain_model_url = 'https://github.com/sczhou/ProPainter/releases/download/v0.1.0/'
 
+
 def imwrite(img, file_path, params=None, auto_mkdir=True):
     if auto_mkdir:
         dir_name = os.path.abspath(os.path.dirname(file_path))
@@ -31,7 +32,6 @@ def imwrite(img, file_path, params=None, auto_mkdir=True):
     return cv2.imwrite(file_path, img, params)
 
 
-# resize frames
 def resize_frames(frames, size=None):    
     if size is not None:
         out_size = size
@@ -46,7 +46,6 @@ def resize_frames(frames, size=None):
     return frames, process_size, out_size
 
 
-#  read frames from video
 def read_frame_from_videos(frame_root):
     if frame_root.endswith(('mp4', 'mov', 'avi', 'MP4', 'MOV', 'AVI')): # input video path
         video_name = os.path.basename(frame_root)[:-4]
@@ -265,7 +264,7 @@ if __name__ == '__main__':
         fuse_img = mask_ * fuse_img + (1-mask_)*img
         masked_frame_for_save.append(fuse_img.astype(np.uint8))
 
-    frames_inp = [np.array(f).astype(np.uint8) for f in frames]
+    ori_frames = [np.array(f).astype(np.uint8) for f in frames]
     frames = to_tensors()(frames).unsqueeze(0) * 2 - 1    
     flow_masks = to_tensors()(flow_masks).unsqueeze(0)
     masks_dilated = to_tensors()(masks_dilated).unsqueeze(0)
@@ -319,7 +318,7 @@ if __name__ == '__main__':
             short_clip_len = 2
         
         # use fp32 for RAFT
-        if frames.size(1) > short_clip_len:
+        if video_length > short_clip_len:
             gt_flows_f_list, gt_flows_b_list = [], []
             for f in trange(0, video_length, short_clip_len, desc='RAFT'):
                 end_f = min(video_length, f + short_clip_len)
@@ -356,7 +355,7 @@ if __name__ == '__main__':
         if flow_length > args.subvideo_length:
             pred_flows_f, pred_flows_b = [], []
             pad_len = 5
-            
+
             for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion'):
                 s_f = max(0, f - pad_len)
                 e_f = min(flow_length, f + args.subvideo_length + pad_len)
@@ -428,7 +427,6 @@ if __name__ == '__main__':
     reset_peak_memory_stats()
 
 
-    ori_frames = frames_inp
     comp_frames = [None] * video_length
 
     neighbor_stride = args.neighbor_length // 2
