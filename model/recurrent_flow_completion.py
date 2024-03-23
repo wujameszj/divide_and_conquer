@@ -1,10 +1,12 @@
 import torch
+from torch.cuda import empty_cache
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
 from model.modules.deformconv import ModulatedDeformConv2d
 from .misc import constant_init
+
 
 class SecondOrderDeformableAlignment(ModulatedDeformConv2d):
     """Second-order deformable alignment module."""
@@ -276,36 +278,45 @@ class RecurrentFlowCompleteNet(nn.Module):
         masked_flows = masked_flows.permute(0,2,1,3,4)
         masks = masks.permute(0,2,1,3,4)
 
-        inputs = torch.cat((masked_flows, masks), dim=1)
+        inputs = torch.cat((
+            masked_flows.cuda().half(),
+            masks.cuda().half()), dim=1)
         
         x = self.downsample(inputs)
-
         feat_e1 = self.encoder1(x)
+        x = x.cpu()
+
         feat_e2 = self.encoder2(feat_e1) # b c t h w
         feat_mid = self.mid_dilation(feat_e2) # b c t h w
+        del feat_e2; empty_cache()
+
         feat_mid = feat_mid.permute(0,2,1,3,4) # b t c h w
-
         feat_prop = self.feat_prop_module(feat_mid)
-        feat_prop = feat_prop.view(-1, 128, h//8, w//8) # b*t c h w
+        del feat_mid; empty_cache()
 
+        feat_prop = feat_prop.view(-1, 128, h//8, w//8) # b*t c h w
         _, c, _, h_f, w_f = feat_e1.shape
         feat_e1 = feat_e1.permute(0,2,1,3,4).contiguous().view(-1, c, h_f, w_f) # b*t c h w
+
         feat_d2 = self.decoder2(feat_prop) + feat_e1
+        del feat_e1, feat_prop; empty_cache()
 
         _, c, _, h_f, w_f = x.shape
         x = x.permute(0,2,1,3,4).contiguous().view(-1, c, h_f, w_f) # b*t c h w
 
         feat_d1 = self.decoder1(feat_d2)
+        del feat_d2; empty_cache()
 
-        flow = self.upsample(feat_d1)
+        flow = self.upsample(feat_d1).cpu()
+        del feat_d1; empty_cache()
+
         if self.training:
-            edge = self.edgeDetector(flow)
+            edge = self.edgeDetector(flow.cuda().half()).cpu()
             edge = edge.view(b, t, 1, h, w)
         else:
             edge = None
 
         flow = flow.view(b, t, 2, h, w)
-
         return flow, edge
         
 
@@ -329,7 +340,9 @@ class RecurrentFlowCompleteNet(nn.Module):
         # backward
         masked_flows_backward = torch.flip(masked_flows_backward, dims=[1])
         masks_backward = torch.flip(masks_backward, dims=[1])
+
         pred_flows_backward, pred_edges_backward = self.forward(masked_flows_backward, masks_backward)
+
         pred_flows_backward = torch.flip(pred_flows_backward, dims=[1])
         if self.training:
             pred_edges_backward = torch.flip(pred_edges_backward, dims=[1])

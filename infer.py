@@ -351,32 +351,24 @@ if __name__ == '__main__':
                 pad_len_s = max(0, f) - s_f
                 pad_len_e = e_f - min(flow_length, f + args.subvideo_length)
 
-                _flow_f = gt_flows_bi[0][:, s_f:e_f].cuda().half()
-                _flow_b = gt_flows_bi[1][:, s_f:e_f].cuda().half()
-                _flow_m = flow_masks[:, s_f:e_f+1].cuda().half()
+                _flow_f = gt_flows_bi[0][:, s_f:e_f]
+                _flow_b = gt_flows_bi[1][:, s_f:e_f]
+                _flow_m = flow_masks[:, s_f:e_f+1]
                 
                 pred_flows_bi_sub, _ = fix_flow_complete.forward_bidirect_flow(
                     (_flow_f, _flow_b), _flow_m)
-                
                 pred_flows_bi_sub = fix_flow_complete.combine_flow(
                     (_flow_f, _flow_b), pred_flows_bi_sub, _flow_m)
-                                
-                pred_flows_f.append(pred_flows_bi_sub[0][:, pad_len_s:e_f-s_f-pad_len_e].cpu())
-                pred_flows_b.append(pred_flows_bi_sub[1][:, pad_len_s:e_f-s_f-pad_len_e].cpu())
 
-                del _flow_f, _flow_b, _flow_m, pred_flows_bi_sub; empty_cache()
+                pred_flows_f.append(pred_flows_bi_sub[0][:, pad_len_s:e_f-s_f-pad_len_e])
+                pred_flows_b.append(pred_flows_bi_sub[1][:, pad_len_s:e_f-s_f-pad_len_e])
 
             pred_flows_f = torch.cat(pred_flows_f, dim=1)
             pred_flows_b = torch.cat(pred_flows_b, dim=1)
             pred_flows_bi = (pred_flows_f, pred_flows_b)
         else:
-            gt_flows_bi = gt_flows_bi[0].cuda().half(), gt_flows_bi[1].cuda.half()
-            flow_masks = flow_masks.cuda().half()
-
             pred_flows_bi, _ = fix_flow_complete.forward_bidirect_flow(gt_flows_bi, flow_masks)
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
-
-        del gt_flows_bi, flow_masks; empty_cache()
 
 
         print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
@@ -458,7 +450,7 @@ if __name__ == '__main__':
         selected_pred_flows_bi = (
             pred_flows_bi[0][:, neighbor_ids[:-1], :, :, :].cuda().half(),
             pred_flows_bi[1][:, neighbor_ids[:-1], :, :, :].cuda().half())
-        
+
         with torch.no_grad():
             # 1.0 indicates mask
             l_t = len(neighbor_ids)
