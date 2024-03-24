@@ -18,7 +18,7 @@ from core.loss import AdversarialLoss, PerceptualLoss, LPIPSLoss
 from core.dataset import TrainDataset
 
 from model.modules.flow_comp_raft import RAFT_bi, FlowLoss, EdgeLoss
-from model.recurrent_flow_completion import RecurrentFlowCompleteNet
+from model.RFC_train import RecurrentFlowCompleteNet
 
 from RAFT.utils.flow_viz_pt import flow_to_image
 
