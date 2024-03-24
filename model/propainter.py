@@ -2,6 +2,7 @@
 '''
 
 import torch
+from torch.cuda import empty_cache
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
@@ -258,11 +259,8 @@ class InpaintGenerator(BaseNetwork):
         super(InpaintGenerator, self).__init__()
         channel = 128
         hidden = 512
-
-        # encoder
         self.encoder = Encoder()
 
-        # decoder
         self.decoder = nn.Sequential(
             deconv(channel, 128, kernel_size=3, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
@@ -322,14 +320,16 @@ class InpaintGenerator(BaseNetwork):
             masks_in: original mask
             masks_updated: updated mask after image propagation
         """
-
         l_t = num_local_frames
         b, t, _, ori_h, ori_w = masked_frames.size()
 
         # extracting features
-        enc_feat = self.encoder(torch.cat([masked_frames.view(b * t, 3, ori_h, ori_w),
-                                        masks_in.view(b * t, 1, ori_h, ori_w),
-                                        masks_updated.view(b * t, 1, ori_h, ori_w)], dim=1))
+        enc_feat = self.encoder(torch.cat([
+            masked_frames.view(b * t, 3, ori_h, ori_w),
+            masks_in.view(b * t, 1, ori_h, ori_w),
+            masks_updated.view(b * t, 1, ori_h, ori_w)], dim=1
+        ).cuda().half()).cpu()
+
         _, c, h, w = enc_feat.size()
         local_feat = enc_feat.view(b, t, c, h, w)[:, :l_t, ...]
         ref_feat = enc_feat.view(b, t, c, h, w)[:, l_t:, ...]
@@ -339,8 +339,10 @@ class InpaintGenerator(BaseNetwork):
         ds_flows_b = F.interpolate(completed_flows[1].view(-1, 2, ori_h, ori_w), scale_factor=1/4, mode='bilinear', align_corners=False).view(b, l_t-1, 2, h, w)/4.0
         ds_mask_in = F.interpolate(masks_in.reshape(-1, 1, ori_h, ori_w), scale_factor=1/4, mode='nearest').view(b, t, 1, h, w)
         ds_mask_in_local = ds_mask_in[:, :l_t]
-        ds_mask_updated_local =  F.interpolate(masks_updated[:,:l_t].reshape(-1, 1, ori_h, ori_w), scale_factor=1/4, mode='nearest').view(b, l_t, 1, h, w)
-
+        ds_mask_updated_local =  F.interpolate(
+            masks_updated[:,:l_t].reshape(-1, 1, ori_h, ori_w).cuda().half(),
+            scale_factor=1/4, mode='nearest'
+        ).cpu().view(b, l_t, 1, h, w)
 
         if self.training:
             mask_pool_l = self.max_pool(ds_mask_in.view(-1, 1, h, w))
@@ -349,25 +351,34 @@ class InpaintGenerator(BaseNetwork):
             mask_pool_l = self.max_pool(ds_mask_in_local.view(-1, 1, h, w))
             mask_pool_l = mask_pool_l.view(b, l_t, 1, mask_pool_l.size(-2), mask_pool_l.size(-1))
 
-
         prop_mask_in = torch.cat([ds_mask_in_local, ds_mask_updated_local], dim=2)
-        _, _, local_feat, _ = self.feat_prop_module(local_feat, ds_flows_f, ds_flows_b, prop_mask_in, interpolation)
+        _, _, local_feat, _ = self.feat_prop_module(
+            local_feat.cuda().half(),
+            ds_flows_f.cuda().half(),
+            ds_flows_b.cuda().half(),
+            prop_mask_in.cuda().half(),
+            interpolation)
+
+        local_feat = local_feat.cpu()
         enc_feat = torch.cat((local_feat, ref_feat), dim=1)
 
-        trans_feat = self.ss(enc_feat.view(-1, c, h, w), b, fold_feat_size)
+        trans_feat = self.ss(enc_feat.view(-1, c, h, w).cuda().half(), b, fold_feat_size)
         mask_pool_l = rearrange(mask_pool_l, 'b t c h w -> b t h w c').contiguous()
-        trans_feat = self.transformers(trans_feat, fold_feat_size, mask_pool_l, t_dilation=t_dilation)
-        trans_feat = self.sc(trans_feat, t, fold_feat_size)
-        trans_feat = trans_feat.view(b, t, -1, h, w)
 
+        trans_feat = self.transformers(trans_feat, fold_feat_size, mask_pool_l, t_dilation=t_dilation)  # for some reason, leaving mask_pool_l on cpu does not produce error
+        empty_cache()
+
+        trans_feat = self.sc(trans_feat, t, fold_feat_size).cpu()
+        trans_feat = trans_feat.view(b, t, -1, h, w)
         enc_feat = enc_feat + trans_feat
 
         if self.training:
-            output = self.decoder(enc_feat.view(-1, c, h, w))
+            output = self.decoder(enc_feat.view(-1, c, h, w).cuda().half())
             output = torch.tanh(output).view(b, t, 3, ori_h, ori_w)
         else:
-            output = self.decoder(enc_feat[:, :l_t].view(-1, c, h, w))
+            output = self.decoder(enc_feat[:, :l_t].view(-1, c, h, w).cuda().half()).cpu()
             output = torch.tanh(output).view(b, l_t, 3, ori_h, ori_w)
+        empty_cache()
 
         return output
 
