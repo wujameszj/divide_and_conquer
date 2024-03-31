@@ -9,6 +9,7 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
+from tqdm import tqdm, trange
 
 from RAFT import RAFT
 from utils.flow_util import *
@@ -41,11 +42,12 @@ def initialize_RAFT(model_path='weights/raft-things.pth', device='cuda'):
 if __name__ == '__main__':
     device = 'cuda'
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-i', '--root_path', type=str, default='your_dataset_root/youtube-vos/JPEGImages')
     parser.add_argument('-o', '--save_path', type=str, default='your_dataset_root/youtube-vos/Flows_flo')
-    parser.add_argument('--height', type=int, default=240)
-    parser.add_argument('--width', type=int, default=432)
+    parser.add_argument('-h', '--height', type=int, default=240)
+    parser.add_argument('-w', '--width', type=int, default=432)
+    parser.add_argument('-r', '--raft_iter', type=int, default=20)
     
     args = parser.parse_args()
     
@@ -57,11 +59,12 @@ if __name__ == '__main__':
     h_new, w_new = (args.height, args.width)
     
     file_list = sorted(os.listdir(root_path))
-    for f in file_list:
-        print(f'Processing: {f} ...')
+    for f in tqdm(file_list, leave=True):
+        
         m_list = sorted(os.listdir(os.path.join(root_path, f)))
         len_m = len(m_list)
-        for i in range(len_m-1):
+        for i in trange(len_m-1, desc=f'Processing {f}', leave=False):
+            
             img1_path = os.path.join(root_path, f, m_list[i])
             img2_path = os.path.join(root_path, f, m_list[i+1])
             img1 = Image.fromarray(cv2.imread(img1_path))
@@ -91,8 +94,8 @@ if __name__ == '__main__':
               img1 = img1*2 - 1
               img2 = img2*2 - 1
 
-              _, flow_f = RAFT_model(img1, img2, iters=20, test_mode=True)
-              _, flow_b = RAFT_model(img2, img1, iters=20, test_mode=True)
+              _, flow_f = RAFT_model(img1, img2, iters=args.raft_iter, test_mode=True)
+              _, flow_b = RAFT_model(img2, img1, iters=args.raft_iter, test_mode=True)
 
 
             flow_f = flow_f[0].permute(1,2,0).cpu().numpy()

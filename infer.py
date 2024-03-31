@@ -408,7 +408,7 @@ if __name__ == '__main__':
                 updated_frames[:, f:f+args.subvideo_length] = updated_frames_sub[:, pad_len_s:e_f-s_f-pad_len_e]
                 updated_masks[:, f:f+args.subvideo_length] = updated_masks_sub[:, pad_len_s:e_f-s_f-pad_len_e]
                 
-                del pred_flows_bi_sub, prop_imgs_sub, updated_local_masks_sub, updated_frames_sub, updated_masks_sub; empty_cache()
+                del pred_flows_bi_sub, prop_imgs_sub, updated_local_masks_sub, updated_frames_sub; empty_cache()
         else:
             b, t, _, _, _ = masks_dilated.size()
             
