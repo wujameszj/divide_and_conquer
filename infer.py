@@ -42,7 +42,7 @@ def resize_frames(frames, size=None):
         process_size = (out_size[0]-out_size[0]%8, out_size[1]-out_size[1]%8)
         if not out_size == process_size:
             frames = [f.resize(process_size) for f in frames]
-        
+
     return frames, process_size, out_size
 
 
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     frames, size, out_size = resize_frames(frames, size)
     
     fps = args.save_fps if fps is None else fps
-    save_root = os.path.join(args.output, video_name)
+    save_root = os.path.join(args.output)
     if not os.path.exists(save_root):
         os.makedirs(save_root, exist_ok=True)
 
@@ -380,7 +380,9 @@ if __name__ == '__main__':
         subvideo_length_img_prop = min(100, args.subvideo_length) # ensure a minimum of 100 frames for image propagation
         if video_length > subvideo_length_img_prop:
             
-            updated_frames, updated_masks = [], []
+            updated_frames = torch.zeros((1, video_length, 3,h,w))
+            updated_masks = torch.zeros((1, video_length, 1,h,w))
+
             pad_len = 10
             for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation'):
 
@@ -403,13 +405,10 @@ if __name__ == '__main__':
                 
                 updated_masks_sub = updated_local_masks_sub.cpu().view(b, t, 1, h, w)
                 
-                updated_frames.append(updated_frames_sub[:, pad_len_s:e_f-s_f-pad_len_e])
-                updated_masks.append(updated_masks_sub[:, pad_len_s:e_f-s_f-pad_len_e])
+                updated_frames[:, f:f+args.subvideo_length] = updated_frames_sub[:, pad_len_s:e_f-s_f-pad_len_e]
+                updated_masks[:, f:f+args.subvideo_length] = updated_masks_sub[:, pad_len_s:e_f-s_f-pad_len_e]
                 
                 del pred_flows_bi_sub, prop_imgs_sub, updated_local_masks_sub, updated_frames_sub, updated_masks_sub; empty_cache()
-                
-            updated_frames = torch.cat(updated_frames, dim=1)
-            updated_masks = torch.cat(updated_masks, dim=1)
         else:
             b, t, _, _, _ = masks_dilated.size()
             
@@ -422,7 +421,6 @@ if __name__ == '__main__':
             updated_masks = updated_local_masks.cpu().view(b, t, 1, h, w)
 
             del prop_imgs, updated_local_masks; empty_cache()
-
 
     print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
     reset_peak_memory_stats()
