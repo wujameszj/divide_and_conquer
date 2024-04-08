@@ -382,7 +382,10 @@ class Trainer:
             # pred_flows_bi = gt_flows_bi
 
             # ---- image propagation ----
-            prop_imgs, updated_local_masks = self.netG.module.img_propagation(masked_local_frames, pred_flows_bi, local_masks, interpolation=self.interp_mode)
+            if self.config['distributed']:
+                prop_imgs, updated_local_masks = self.netG.module.img_propagation(masked_local_frames, pred_flows_bi, local_masks, interpolation=self.interp_mode)
+            else:
+                prop_imgs, updated_local_masks = self.netG.img_propagation(masked_local_frames, pred_flows_bi, local_masks, interpolation=self.interp_mode)
             updated_masks = masks.clone()
             updated_masks[:, :l_t, ...] = updated_local_masks.view(b, l_t, 1, h, w)
             updated_frames = masked_frames.clone()
