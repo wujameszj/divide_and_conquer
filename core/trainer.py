@@ -216,7 +216,7 @@ class Trainer:
         else:
             ckpts = [
                 os.path.basename(i).split('.pth')[0]
-                for i in glob.glob(os.path.join(model_path, '*.pth'))
+                for i in glob.glob(os.path.join(model_path, 'gen*.pth'))
             ]
             ckpts.sort()
             latest_epoch = ckpts[-1][4:] if len(ckpts) > 0 else None
@@ -268,9 +268,10 @@ class Trainer:
                         self.optimD.load_state_dict(data_opt['optimD'])
                         self.scheD.load_state_dict(data_opt['scheD'])
             else:
+                dataG = torch.load(os.path.join(model_path, 'ProPainter.pth'), map_location=self.config['device'])
+                self.netG.load_state_dict(dataG)
                 if self.config['global_rank'] == 0:
-                    print('Warnning: There is no trained model found.'
-                        'An initialized model will be used.')
+                    print('Loading pre-trained model for fine-tuning:', os.path.join(model_path, 'ProPainter.pth'))
 
     def save(self, it):
         """Save parameters every eval_epoch"""
