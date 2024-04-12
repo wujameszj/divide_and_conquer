@@ -9,6 +9,7 @@ from PIL import Image
 from tqdm import trange
 
 import torch
+from torch import zeros
 from torch.cuda import max_memory_allocated, max_memory_reserved, reset_peak_memory_stats, empty_cache
 import torchvision
 
@@ -342,7 +343,8 @@ if __name__ == '__main__':
         flow_length = gt_flows_bi[0].size(1)
         if flow_length > args.subvideo_length:
 
-            pred_flows_f, pred_flows_b = [], []
+            pred_flows_f = zeros([1, video_length-1, 2,h,w])
+            pred_flows_b = zeros([1, video_length-1, 2,h,w])
             pad_len = 5
             for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion'):
 
@@ -360,12 +362,12 @@ if __name__ == '__main__':
                 pred_flows_bi_sub = fix_flow_complete.combine_flow(
                     (_flow_f, _flow_b), pred_flows_bi_sub, _flow_m)
 
-                pred_flows_f.append(pred_flows_bi_sub[0][:, pad_len_s:e_f-s_f-pad_len_e])
-                pred_flows_b.append(pred_flows_bi_sub[1][:, pad_len_s:e_f-s_f-pad_len_e])
+                _e = e_f - s_f - pad_len_e
+                pred_flows_f[:, f:f+_e-pad_len_s] = pred_flows_bi_sub[0][:, pad_len_s:_e]
+                pred_flows_b[:, f:f+_e-pad_len_s] = pred_flows_bi_sub[1][:, pad_len_s:_e]
 
-            pred_flows_f = torch.cat(pred_flows_f, dim=1)
-            pred_flows_b = torch.cat(pred_flows_b, dim=1)
             pred_flows_bi = (pred_flows_f, pred_flows_b)
+            del pred_flows_f, pred_flows_b
         else:
             pred_flows_bi, _ = fix_flow_complete.forward_bidirect_flow(gt_flows_bi, flow_masks)
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
@@ -405,8 +407,9 @@ if __name__ == '__main__':
                 
                 updated_masks_sub = updated_local_masks_sub.cpu().view(b, t, 1, h, w)
                 
-                updated_frames[:, f:f+args.subvideo_length] = updated_frames_sub[:, pad_len_s:e_f-s_f-pad_len_e]
-                updated_masks[:, f:f+args.subvideo_length] = updated_masks_sub[:, pad_len_s:e_f-s_f-pad_len_e]
+                _e = e_f - s_f - pad_len_e
+                updated_frames[:, f:f+_e-pad_len_s] = updated_frames_sub[:, pad_len_s:_e]
+                updated_masks[:, f:f+_e-pad_len_s] = updated_masks_sub[:, pad_len_s:_e]
                 
                 del pred_flows_bi_sub, prop_imgs_sub, updated_local_masks_sub, updated_frames_sub; empty_cache()
         else:
