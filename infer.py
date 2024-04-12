@@ -330,8 +330,11 @@ if __name__ == '__main__':
             gt_flows_f = torch.cat(gt_flows_f_list, dim=1)
             gt_flows_b = torch.cat(gt_flows_b_list, dim=1)
             gt_flows_bi = (gt_flows_f, gt_flows_b)
+            del gt_flows_f, gt_flows_b, gt_flows_f_list, gt_flows_b_list
         else:
-            gt_flows_bi = fix_raft(frames.cuda(), iters=args.raft_iter).cpu()
+            _f, _b = fix_raft(frames.cuda(), iters=args.raft_iter)
+            gt_flows_bi = (_f.cpu(), _b.cpu())
+            del _f, _b
         empty_cache()
 
 
