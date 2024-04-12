@@ -6,7 +6,7 @@ import imageio
 import numpy as np
 import scipy.ndimage
 from PIL import Image
-from tqdm import trange
+from tqdm import trange, tqdm
 
 import torch
 from torch import zeros
@@ -58,7 +58,7 @@ def read_frame_from_videos(frame_root):
         video_name = os.path.basename(frame_root)
         frames = []
         fr_lst = sorted(os.listdir(frame_root))
-        for fr in fr_lst:
+        for fr in tqdm(fr_lst, leave=False, desc='reading frames'):
             frame = cv2.imread(os.path.join(frame_root, fr))
             frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             frames.append(frame)
@@ -87,7 +87,7 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5):
         for mp in mnames:
             masks_img.append(Image.open(os.path.join(mpath, mp)))
           
-    for mask_img in masks_img:
+    for mask_img in tqdm(masks_img, leave=False, desc='reading masks'):
         if size is not None:
             mask_img = mask_img.resize(size, Image.NEAREST)
         mask_img = np.array(mask_img.convert('L'))
@@ -114,47 +114,6 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5):
 
     return flow_masks, masks_dilated
 
-
-def extrapolation(video_ori, scale):
-    """Prepares the data for video outpainting.
-    """
-    nFrame = len(video_ori)
-    imgW, imgH = video_ori[0].size
-
-    # Defines new FOV.
-    imgH_extr = int(scale[0] * imgH)
-    imgW_extr = int(scale[1] * imgW)
-    imgH_extr = imgH_extr - imgH_extr % 8
-    imgW_extr = imgW_extr - imgW_extr % 8
-    H_start = int((imgH_extr - imgH) / 2)
-    W_start = int((imgW_extr - imgW) / 2)
-
-    # Extrapolates the FOV for video.
-    frames = []
-    for v in video_ori:
-        frame = np.zeros(((imgH_extr, imgW_extr, 3)), dtype=np.uint8)
-        frame[H_start: H_start + imgH, W_start: W_start + imgW, :] = v
-        frames.append(Image.fromarray(frame))
-
-    # Generates the mask for missing region.
-    masks_dilated = []
-    flow_masks = []
-    
-    dilate_h = 4 if H_start > 10 else 0
-    dilate_w = 4 if W_start > 10 else 0
-    mask = np.ones(((imgH_extr, imgW_extr)), dtype=np.uint8)
-    
-    mask[H_start+dilate_h: H_start+imgH-dilate_h, 
-         W_start+dilate_w: W_start+imgW-dilate_w] = 0
-    flow_masks.append(Image.fromarray(mask * 255))
-
-    mask[H_start: H_start+imgH, W_start: W_start+imgW] = 0
-    masks_dilated.append(Image.fromarray(mask * 255))
-  
-    flow_masks = flow_masks * nFrame
-    masks_dilated = masks_dilated * nFrame
-    
-    return frames, flow_masks, masks_dilated, (imgW_extr, imgH_extr)
 
 
 def get_ref_index(mid_neighbor_id, neighbor_ids, length, ref_stride=10, ref_num=-1):
@@ -203,23 +162,17 @@ if __name__ == '__main__':
     parser.add_argument(
         "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(
-        '--mode', default='video_inpainting', choices=['video_inpainting', 'video_outpainting'], help="Modes: video_inpainting / video_outpainting")
-    parser.add_argument(
         '--scale_h', type=float, default=1.0, help='Outpainting scale of height for video_outpainting mode.')
     parser.add_argument(
         '--scale_w', type=float, default=1.2, help='Outpainting scale of width for video_outpainting mode.')
     parser.add_argument(
-        '--save_fps', type=int, default=24, help='Frame per second. Default: 24')
-    parser.add_argument(
         '--save_frames', action='store_true', help='Save output frames. Default: False')
-    parser.add_argument(
-        '--output_video', action='store_true', help='Default: False')
     parser.add_argument(
         '--model', type=str, default='weights/ProPainter.pth', help='Path of propainter model')
     
     args = parser.parse_args()
 
-    frames, fps, size, video_name = read_frame_from_videos(args.video)
+    frames, _, size, video_name = read_frame_from_videos(args.video)
     if not args.width == -1 and not args.height == -1:
         size = (args.width, args.height)
     if not args.resize_ratio == 1.0:
@@ -227,36 +180,16 @@ if __name__ == '__main__':
 
     frames, size, out_size = resize_frames(frames, size)
     
-    fps = args.save_fps if fps is None else fps
     save_root = os.path.join(args.output)
     if not os.path.exists(save_root):
         os.makedirs(save_root, exist_ok=True)
 
-    if args.mode == 'video_inpainting':
-        frames_len = len(frames)
-        flow_masks, masks_dilated = read_mask(args.mask, frames_len, size, 
-                                              flow_mask_dilates=args.mask_dilation,
-                                              mask_dilates=args.mask_dilation)
-        w, h = size
-    elif args.mode == 'video_outpainting':
-        assert args.scale_h is not None and args.scale_w is not None, 'Please provide a outpainting scale (s_h, s_w).'
-        frames, flow_masks, masks_dilated, size = extrapolation(frames, (args.scale_h, args.scale_w))
-        w, h = size
-    else:
-        raise NotImplementedError
-    
-    # for saving the masked frames or video
-    masked_frame_for_save = []
-    for i in range(len(frames)):
-        mask_ = np.expand_dims(np.array(masks_dilated[i]),2).repeat(3, axis=2)/255.
-        img = np.array(frames[i])
-        green = np.zeros([h, w, 3]) 
-        green[:,:,1] = 255
-        alpha = 0.6
-        # alpha = 1.0
-        fuse_img = (1-alpha)*img + alpha*green
-        fuse_img = mask_ * fuse_img + (1-mask_)*img
-        masked_frame_for_save.append(fuse_img.astype(np.uint8))
+    frames_len = len(frames)
+    flow_masks, masks_dilated = read_mask(args.mask, frames_len, size, 
+                                            flow_mask_dilates=args.mask_dilation,
+                                            mask_dilates=args.mask_dilation)
+    w, h = size
+
 
     ori_frames = [np.array(f).astype(np.uint8) for f in frames]
     frames = to_tensors()(frames).unsqueeze(0) * 2 - 1    
@@ -342,7 +275,6 @@ if __name__ == '__main__':
         reset_peak_memory_stats()
 
         
-        # ---- complete flow ----
         flow_length = gt_flows_bi[0].size(1)
         if flow_length > args.subvideo_length:
 
@@ -375,7 +307,6 @@ if __name__ == '__main__':
             pred_flows_bi, _ = fix_flow_complete.forward_bidirect_flow(gt_flows_bi, flow_masks)
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
 
-
         print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
         reset_peak_memory_stats()
 
@@ -385,9 +316,8 @@ if __name__ == '__main__':
         subvideo_length_img_prop = min(100, args.subvideo_length) # ensure a minimum of 100 frames for image propagation
         if video_length > subvideo_length_img_prop:
             
-            updated_frames = torch.zeros((1, video_length, 3,h,w))
-            updated_masks = torch.zeros((1, video_length, 1,h,w))
-
+            updated_frames = zeros([1, video_length, 3,h,w])
+            updated_masks = zeros([1, video_length, 1,h,w])
             pad_len = 10
             for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation'):
 
@@ -439,8 +369,8 @@ if __name__ == '__main__':
         ref_num = args.subvideo_length // args.ref_stride
     else:
         ref_num = -1
-    
-    # ---- feature propagation + transformer ----
+
+
     for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer'):
         neighbor_ids = [
             i for i in range(max(0, f - neighbor_stride),
@@ -485,26 +415,13 @@ if __name__ == '__main__':
     reset_peak_memory_stats()
 
 
-    # save each frame
     if args.save_frames:
-        for idx in range(video_length):
+        for idx in trange(video_length, leave=False, desc='saving results'):
             f = comp_frames[idx]
             f = cv2.resize(f, out_size, interpolation = cv2.INTER_CUBIC)
             f = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
             img_save_root = os.path.join(save_root, 'frames', str(idx).zfill(4)+'.png')
             imwrite(f, img_save_root)
                     
-
-    # if args.mode == 'video_outpainting':
-    #     comp_frames = [i[10:-10,10:-10] for i in comp_frames]
-    #     masked_frame_for_save = [i[10:-10,10:-10] for i in masked_frame_for_save]
-    
-    # save videos frame
-    if args.output_video:
-        masked_frame_for_save = [cv2.resize(f, out_size) for f in masked_frame_for_save]
-        comp_frames = [cv2.resize(f, out_size) for f in comp_frames]
-        imageio.mimwrite(os.path.join(save_root, 'masked_in.mp4'), masked_frame_for_save, fps=fps, quality=7)
-        imageio.mimwrite(os.path.join(save_root, 'inpaint_out.mp4'), comp_frames, fps=fps, quality=7)
-    
     print(f'\nAll results are saved in {save_root}')
     empty_cache()
