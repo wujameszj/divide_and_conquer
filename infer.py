@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 from time import time 
+
 import cv2
 import argparse
+# import imageio
 import numpy as np
 import scipy.ndimage
 from PIL import Image
@@ -33,16 +35,16 @@ def imwrite(img, file_path, params=None, auto_mkdir=True):
     return cv2.imwrite(file_path, img, params)
 
 
-def resize_frames(frames, size=None):    
+def resize_frames(frames, size=None, algorithm=Image.LANCZOS):
     if size is not None:
         out_size = size
         process_size = (out_size[0]-out_size[0]%8, out_size[1]-out_size[1]%8)
-        frames = [f.resize(process_size) for f in frames]
+        frames = [f.resize(process_size, algorithm) for f in frames]
     else:
         out_size = frames[0].size
         process_size = (out_size[0]-out_size[0]%8, out_size[1]-out_size[1]%8)
         if not out_size == process_size:
-            frames = [f.resize(process_size) for f in frames]
+            frames = [f.resize(process_size, algorithm) for f in frames]
 
     return frames, process_size, out_size
 
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--neighbor_length", type=int, default=10, help='Length of local neighboring frames.')
     parser.add_argument(
-        "--subvideo_length", type=int, default=80, help='Length of sub-video for long video inference.')
+        "--subvideo_length", type=int, default=200, help='Length of sub-video for long video inference.')
     parser.add_argument(
         "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(
@@ -178,14 +180,16 @@ if __name__ == '__main__':
     if args.record_time: st = time()
 
     frames, fps, size, video_name = read_frame_from_videos(args.video)
+    ori_reso_frames = frames
+
     if not args.width == -1 and not args.height == -1:
         size = (args.width, args.height)
     if not args.resize_ratio == 1.0:
         size = (int(args.resize_ratio * size[0]), int(args.resize_ratio * size[1]))
 
     frames, size, out_size = resize_frames(frames, size)
-    
-    save_root = os.path.join(args.output)
+
+    save_root = args.output
     if not os.path.exists(save_root):
         os.makedirs(save_root, exist_ok=True)
 
@@ -201,14 +205,14 @@ if __name__ == '__main__':
     flow_masks = to_tensors()(flow_masks).unsqueeze(0)
     masks_dilated = to_tensors()(masks_dilated).unsqueeze(0)
 
-    
+
     ##############################################
     # set up RAFT and flow completion model
     ##############################################
     ckpt_path = load_file_from_url(url=os.path.join(pretrain_model_url, 'raft-things.pth'), 
                                     model_dir='weights', progress=True, file_name=None)
     fix_raft = RAFT_bi(ckpt_path, device)
-    
+
     ckpt_path = load_file_from_url(url=os.path.join(pretrain_model_url, 'recurrent_flow_completion.pth'), 
                                     model_dir='weights', progress=True, file_name=None)
     fix_flow_complete = RecurrentFlowCompleteNet(ckpt_path)
@@ -274,7 +278,6 @@ if __name__ == '__main__':
             gt_flows_bi = (_f.cpu(), _b.cpu())
             del _f, _b
         empty_cache()
-
 
         if args.vram_stat:
             print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
@@ -378,6 +381,11 @@ if __name__ == '__main__':
     else:
         ref_num = -1
 
+    ori_flow_masks, ori_masks_dilated = read_mask(args.mask, frames_len, (1280,720), 
+                                              flow_mask_dilates=args.mask_dilation,
+                                              mask_dilates=args.mask_dilation)
+    ori_masks_dilated = to_tensors()(ori_masks_dilated).unsqueeze(0)
+
 
     for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer', leave=args.keep_pbar):
         neighbor_ids = [
@@ -407,10 +415,19 @@ if __name__ == '__main__':
             binary_masks = masks_dilated[0, neighbor_ids, :, :, :].permute(
                 0, 2, 3, 1).numpy().astype(np.uint8)
 
+            ori_binary_masks = ori_masks_dilated[0, neighbor_ids, :, :, :].permute(0, 2, 3, 1).numpy().astype(np.uint8)
+
             for i in range(l_t):
                 idx = neighbor_ids[i]
-                img = np.array(pred_img[i]).astype(np.uint8) * binary_masks[i] \
-                    + ori_frames[idx] * (1 - binary_masks[i])
+
+                pred_img_pil = Image.fromarray(pred_img[i].astype('uint8'))
+                pred_img_pil = pred_img_pil.resize((1280,720), Image.LANCZOS)
+                pred_img_up = np.array(pred_img_pil)
+                img = np.array(pred_img_up).astype(np.uint8) * ori_binary_masks[i] \
+                    + ori_reso_frames[idx] * (1 - ori_binary_masks[i])
+
+                # img = np.array(pred_img[i]).astype(np.uint8) * binary_masks[i] \
+                #     + ori_frames[idx] * (1 - binary_masks[i])
                 if comp_frames[idx] is None:
                     comp_frames[idx] = img
                 else: 
@@ -427,12 +444,11 @@ if __name__ == '__main__':
     if args.save_frames:
         for idx in trange(video_length, leave=False, desc='saving results'):
             f = comp_frames[idx]
-            f = cv2.resize(f, out_size, interpolation = cv2.INTER_CUBIC)
             f = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
-            img_save_root = os.path.join(save_root, 'frames', str(idx).zfill(4)+'.png')
+            img_save_root = os.path.join(save_root, str(idx).zfill(4)+'.png')
             imwrite(f, img_save_root)
-                    
-    print(f'All results are saved in {save_root}')
+
+    print(f'All results are saved in {save_root}.')
     if args.record_time:
         print(f'Took {round((time()-st)/60, 2)} minutes')
     empty_cache()
