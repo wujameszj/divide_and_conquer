@@ -164,10 +164,6 @@ if __name__ == '__main__':
     parser.add_argument(
         "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(
-        '--scale_h', type=float, default=1.0, help='Outpainting scale of height for video_outpainting mode.')
-    parser.add_argument(
-        '--scale_w', type=float, default=1.2, help='Outpainting scale of width for video_outpainting mode.')
-    parser.add_argument(
         '--save_frames', action='store_true', help='Save output frames. Default: False')
     parser.add_argument(
         '--model', type=str, default='weights/ProPainter.pth', help='Path of propainter model')
