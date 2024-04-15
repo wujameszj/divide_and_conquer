@@ -303,12 +303,12 @@ class InpaintGenerator(BaseNetwork):
 
 
         if model_path is not None:
-            print('Pretrained ProPainter has loaded...')
+#            print('Pretrained ProPainter has loaded...')
             ckpt = torch.load(model_path, map_location='cpu')
             self.load_state_dict(ckpt, strict=True)
 
         # print network parameter number
-        self.print_network()
+#        self.print_network()
 
     def img_propagation(self, masked_frames, completed_flows, masks, interpolation='nearest'):
         _, _, prop_frames, updated_masks = self.img_prop_module(masked_frames, completed_flows[0], completed_flows[1], masks, interpolation)

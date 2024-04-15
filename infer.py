@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
+from time import time 
 import cv2
 import argparse
-import imageio
 import numpy as np
 import scipy.ndimage
 from PIL import Image
@@ -169,10 +169,15 @@ if __name__ == '__main__':
         '--save_frames', action='store_true', help='Save output frames. Default: False')
     parser.add_argument(
         '--model', type=str, default='weights/ProPainter.pth', help='Path of propainter model')
-    
+    parser.add_argument('--record_time', action='store_true')
+    parser.add_argument('--vram_stat', action='store_true')
+    parser.add_argument('--keep_pbar', action='store_true')
+
     args = parser.parse_args()
 
-    frames, _, size, video_name = read_frame_from_videos(args.video)
+    if args.record_time: st = time()
+
+    frames, fps, size, video_name = read_frame_from_videos(args.video)
     if not args.width == -1 and not args.height == -1:
         size = (args.width, args.height)
     if not args.resize_ratio == 1.0:
@@ -248,7 +253,7 @@ if __name__ == '__main__':
         # use fp32 for RAFT
         if video_length > short_clip_len:
             gt_flows_f_list, gt_flows_b_list = [], []
-            for f in trange(0, video_length, short_clip_len, desc='RAFT'):
+            for f in trange(0, video_length, short_clip_len, desc='RAFT', leave=args.keep_pbar):
                 end_f = min(video_length, f + short_clip_len)
                 if f == 0:
                     flows_f, flows_b = fix_raft(frames[:,f:end_f].cuda(), iters=args.raft_iter)
@@ -271,8 +276,9 @@ if __name__ == '__main__':
         empty_cache()
 
 
-        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
-        reset_peak_memory_stats()
+        if args.vram_stat:
+            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+            reset_peak_memory_stats()
 
         
         flow_length = gt_flows_bi[0].size(1)
@@ -281,7 +287,7 @@ if __name__ == '__main__':
             pred_flows_f = zeros([1, video_length-1, 2,h,w])
             pred_flows_b = zeros([1, video_length-1, 2,h,w])
             pad_len = 5
-            for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion'):
+            for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion', leave=args.keep_pbar):
 
                 s_f = max(0, f - pad_len)
                 e_f = min(flow_length, f + args.subvideo_length + pad_len)
@@ -307,8 +313,9 @@ if __name__ == '__main__':
             pred_flows_bi, _ = fix_flow_complete.forward_bidirect_flow(gt_flows_bi, flow_masks)
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
 
-        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
-        reset_peak_memory_stats()
+        if args.vram_stat:
+            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+            reset_peak_memory_stats()
 
 
         # ---- image propagation ----
@@ -319,7 +326,7 @@ if __name__ == '__main__':
             updated_frames = zeros([1, video_length, 3,h,w])
             updated_masks = zeros([1, video_length, 1,h,w])
             pad_len = 10
-            for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation'):
+            for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation', leave=args.keep_pbar):
 
                 s_f = max(0, f - pad_len)
                 e_f = min(video_length, f + subvideo_length_img_prop + pad_len)
@@ -358,8 +365,9 @@ if __name__ == '__main__':
 
             del prop_imgs, updated_local_masks; empty_cache()
 
-    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
-    reset_peak_memory_stats()
+    if args.vram_stat:
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        reset_peak_memory_stats()
 
 
     comp_frames = [None] * video_length
@@ -371,7 +379,7 @@ if __name__ == '__main__':
         ref_num = -1
 
 
-    for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer'):
+    for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer', leave=args.keep_pbar):
         neighbor_ids = [
             i for i in range(max(0, f - neighbor_stride),
                                 min(video_length, f + neighbor_stride + 1))
@@ -411,8 +419,9 @@ if __name__ == '__main__':
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
 
 
-    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
-    reset_peak_memory_stats()
+    if args.vram_stat:
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        reset_peak_memory_stats()
 
 
     if args.save_frames:
@@ -423,5 +432,7 @@ if __name__ == '__main__':
             img_save_root = os.path.join(save_root, 'frames', str(idx).zfill(4)+'.png')
             imwrite(f, img_save_root)
                     
-    print(f'\nAll results are saved in {save_root}')
+    print(f'All results are saved in {save_root}')
+    if args.record_time:
+        print(f'Took {round((time()-st)/60, 2)} minutes')
     empty_cache()
