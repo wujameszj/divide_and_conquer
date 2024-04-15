@@ -408,9 +408,6 @@ if __name__ == '__main__':
             pred_img = (pred_img + 1) / 2
             pred_img = pred_img.permute(0, 2, 3, 1).numpy() * 255
 
-            binary_masks = masks_dilated[0, neighbor_ids, :, :, :].permute(
-                0, 2, 3, 1).numpy().astype(np.uint8)
-
             ori_binary_masks = ori_masks_dilated[0, neighbor_ids, :, :, :].permute(0, 2, 3, 1).numpy().astype(np.uint8)
 
             for i in range(l_t):
@@ -422,8 +419,6 @@ if __name__ == '__main__':
                 img = np.array(pred_img_up).astype(np.uint8) * ori_binary_masks[i] \
                     + ori_reso_frames[idx] * (1 - ori_binary_masks[i])
 
-                # img = np.array(pred_img[i]).astype(np.uint8) * binary_masks[i] \
-                #     + ori_frames[idx] * (1 - binary_masks[i])
                 if comp_frames[idx] is None:
                     comp_frames[idx] = img
                 else: 
