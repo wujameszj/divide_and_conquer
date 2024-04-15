@@ -77,7 +77,7 @@ def binary_mask(mask, th=0.1):
   
   
 # read frame-wise masks
-def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5):
+def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorithm=Image.LANCZOS):
     masks_img = []
     masks_dilated = []
     flow_masks = []
@@ -91,7 +91,7 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5):
           
     for mask_img in tqdm(masks_img, leave=False, desc='reading masks'):
         if size is not None:
-            mask_img = mask_img.resize(size, Image.NEAREST)
+            mask_img = mask_img.resize(size, algorithm)
         mask_img = np.array(mask_img.convert('L'))
 
         # Dilate 8 pixel so that all known pixel is trustworthy
