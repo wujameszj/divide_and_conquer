@@ -4,7 +4,6 @@ from time import time
 
 import cv2
 import argparse
-# import imageio
 import numpy as np
 import scipy.ndimage
 from PIL import Image
@@ -77,7 +76,7 @@ def binary_mask(mask, th=0.1):
   
   
 # read frame-wise masks
-def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorithm=Image.LANCZOS):
+def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorithm=Image.NEAREST):  # Image.LANCZOS
     masks_img = []
     masks_dilated = []
     flow_masks = []
