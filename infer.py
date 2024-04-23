@@ -10,7 +10,7 @@ from PIL import Image
 from tqdm import trange, tqdm
 
 import torch
-from torch import zeros
+from torch import empty
 from torch.cuda import max_memory_allocated, max_memory_reserved, reset_peak_memory_stats, empty_cache
 import torchvision
 
@@ -60,9 +60,7 @@ def read_frame_from_videos(frame_root):
         frames = []
         fr_lst = sorted(os.listdir(frame_root))
         for fr in tqdm(fr_lst, leave=False, desc='reading frames'):
-            frame = cv2.imread(os.path.join(frame_root, fr))
-            frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            frames.append(frame)
+            frames.append(Image.open(os.path.join(frame_root, fr)))
         fps = None
     size = frames[0].size
 
@@ -195,7 +193,6 @@ if __name__ == '__main__':
     w, h = size
 
 
-    ori_frames = [np.array(f).astype(np.uint8) for f in frames]
     frames = to_tensors()(frames).unsqueeze(0) * 2 - 1    
     flow_masks = to_tensors()(flow_masks).unsqueeze(0)
     masks_dilated = to_tensors()(masks_dilated).unsqueeze(0)
@@ -282,8 +279,8 @@ if __name__ == '__main__':
         flow_length = gt_flows_bi[0].size(1)
         if flow_length > args.subvideo_length:
 
-            pred_flows_f = zeros([1, video_length-1, 2,h,w])
-            pred_flows_b = zeros([1, video_length-1, 2,h,w])
+            pred_flows_f = empty([1, video_length-1, 2,h,w])
+            pred_flows_b = empty([1, video_length-1, 2,h,w])
             pad_len = 5
             for f in trange(0, flow_length, args.subvideo_length, desc='Flow completion', leave=args.keep_pbar):
 
@@ -321,8 +318,8 @@ if __name__ == '__main__':
         subvideo_length_img_prop = min(100, args.subvideo_length) # ensure a minimum of 100 frames for image propagation
         if video_length > subvideo_length_img_prop:
             
-            updated_frames = zeros([1, video_length, 3,h,w])
-            updated_masks = zeros([1, video_length, 1,h,w])
+            updated_frames = empty([1, video_length, 3,h,w])
+            updated_masks = empty([1, video_length, 1,h,w])
             pad_len = 10
             for f in trange(0, video_length, subvideo_length_img_prop, desc='Image propagation', leave=args.keep_pbar):
 
