@@ -356,7 +356,6 @@ class InpaintGenerator(BaseNetwork):
             ds_flows_b.cuda().half(),
             prop_mask_in.cuda().half(),
             interpolation)
-        empty_cache()
 
         local_feat = local_feat.cpu()
         enc_feat = torch.cat((local_feat, ref_feat), dim=1)
