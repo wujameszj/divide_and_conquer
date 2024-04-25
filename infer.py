@@ -153,9 +153,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mask_dilation', type=int, default=4, help='Mask dilation for video and flow masking.')
     parser.add_argument(
-        "--ref_stride", type=int, default=10, help='Stride of global reference frames.')
+        "--ref_stride", type=int, default=40, help='Stride of global reference frames.')
     parser.add_argument(
-        "--neighbor_length", type=int, default=10, help='Length of local neighboring frames.')
+        "--neighbor_length", type=int, default=40, help='Length of local neighboring frames.')
     parser.add_argument(
         "--subvideo_length", type=int, default=999, help='Length of sub-video for long video inference.')
     parser.add_argument(
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     parser.add_argument('--record_time', action='store_true')
     parser.add_argument('--vram_stat', action='store_true')
     parser.add_argument('--keep_pbar', action='store_true')
-
+    parser.add_argument("--skip_frame",type=int, default=0)
     args = parser.parse_args()
 
     if args.record_time: st = time()
@@ -379,7 +379,7 @@ if __name__ == '__main__':
     ori_masks_dilated = to_tensors()(ori_masks_dilated).unsqueeze(0)
 
 
-    for f in trange(0, video_length, neighbor_stride, desc='Feature propagation + transformer', leave=args.keep_pbar):
+    for f in trange(args.skip_frame, video_length, neighbor_stride, desc='Feature propagation + transformer', leave=args.keep_pbar):
         neighbor_ids = [
             i for i in range(max(0, f - neighbor_stride),
                                 min(video_length, f + neighbor_stride + 1))
@@ -423,19 +423,18 @@ if __name__ == '__main__':
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
 
 
-    if args.vram_stat:
-        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
-        reset_peak_memory_stats()
+    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
+    reset_peak_memory_stats()
 
 
     if args.save_frames:
-        for idx in trange(video_length, leave=False, desc='saving results'):
+        for idx in trange(args.skip_frame, video_length, leave=False, desc='saving results'):
             f = comp_frames[idx]
             f = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
             img_save_root = os.path.join(save_root, str(idx).zfill(4)+'.png')
             imwrite(f, img_save_root)
+#        print(f'All results are saved in {save_root}.')
 
-    print(f'All results are saved in {save_root}.')
     if args.record_time:
         print(f'Took {round((time()-st)/60, 2)} minutes')
     empty_cache()
