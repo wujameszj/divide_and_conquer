@@ -272,7 +272,7 @@ if __name__ == '__main__':
         empty_cache()
 
         if args.vram_stat:
-            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
             reset_peak_memory_stats()
 
         
@@ -309,7 +309,7 @@ if __name__ == '__main__':
             pred_flows_bi = fix_flow_complete.combine_flow(gt_flows_bi, pred_flows_bi, flow_masks)
 
         if args.vram_stat:
-            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+            print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
             reset_peak_memory_stats()
 
 
@@ -361,7 +361,7 @@ if __name__ == '__main__':
             del prop_imgs, updated_local_masks; empty_cache()
 
     if args.vram_stat:
-        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
         reset_peak_memory_stats()
 
 
@@ -424,7 +424,7 @@ if __name__ == '__main__':
 
 
     if args.vram_stat:
-        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 1)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 1)} GB.')    
+        print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
         reset_peak_memory_stats()
 
 
