@@ -153,13 +153,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mask_dilation', type=int, default=4, help='Mask dilation for video and flow masking.')
     parser.add_argument(
-        "--ref_stride", type=int, default=40, help='Stride of global reference frames.')
+        '-t', "--ref_stride", type=int, default=40, help='Stride of global reference frames.')
     parser.add_argument(
-        "--neighbor_length", type=int, default=40, help='Length of local neighboring frames.')
+        '-n', "--neighbor_length", type=int, default=40, help='Length of local neighboring frames.')
     parser.add_argument(
         "--subvideo_length", type=int, default=999, help='Length of sub-video for long video inference.')
     parser.add_argument(
-        "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
+        '-r',  "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(
         '--save_frames', action='store_true', help='Save output frames. Default: False')
     parser.add_argument(
