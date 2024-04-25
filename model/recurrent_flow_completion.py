@@ -288,9 +288,9 @@ class RecurrentFlowCompleteNet(nn.Module):
             masks.cuda().half()), dim=1)
         
         x = self.downsample(inputs)
+        del inputs; empty_cache()
         feat_e1 = self.encoder1(x)
         del x; empty_cache()
-#        x = x.cpu()
 
         feat_e2 = self.encoder2(feat_e1) # b c t h w
         feat_mid = self.mid_dilation(feat_e2) # b c t h w
@@ -307,23 +307,14 @@ class RecurrentFlowCompleteNet(nn.Module):
         feat_d2 = self.decoder2(feat_prop) + feat_e1
         del feat_e1, feat_prop; empty_cache()
 
-#        _, c, _, h_f, w_f = x.shape
-#        x = x.permute(0,2,1,3,4).contiguous().view(-1, c, h_f, w_f) # b*t c h w
-
         feat_d1 = self.decoder1(feat_d2)
         del feat_d2; empty_cache()
 
         flow = self.upsample(feat_d1).cpu()
         del feat_d1; empty_cache()
 
-        if self.training:
-            edge = self.edgeDetector(flow.cuda().half()).cpu()
-            edge = edge.view(b, t, 1, h, w)
-        else:
-            edge = None
-
         flow = flow.view(b, t, 2, h, w)
-        return flow, edge
+        return flow, None 
         
 
     def forward_bidirect_flow(self, masked_flows_bi, masks):
@@ -350,8 +341,8 @@ class RecurrentFlowCompleteNet(nn.Module):
         pred_flows_backward, pred_edges_backward = self.forward(masked_flows_backward, masks_backward)
 
         pred_flows_backward = torch.flip(pred_flows_backward, dims=[1])
-        if self.training:
-            pred_edges_backward = torch.flip(pred_edges_backward, dims=[1])
+        # if self.training:
+        #     pred_edges_backward = torch.flip(pred_edges_backward, dims=[1])
 
         return [pred_flows_forward, pred_flows_backward], [pred_edges_forward, pred_edges_backward]
 
