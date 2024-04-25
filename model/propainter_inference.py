@@ -187,9 +187,9 @@ class BidirectionalPropagation(nn.Module):
             masks_f = torch.stack(masks['forward_1'], dim=1)
             outputs = outputs_f
 
-        return outputs_b.view(b, -1, c, h, w), outputs_f.view(b, -1, c, h, w), \
-               outputs.view(b, -1, c, h, w), masks_f
-
+        return None, None, outputs.view(b, -1, c, h, w), masks_f
+        # return outputs_b.view(b, -1, c, h, w), outputs_f.view(b, -1, c, h, w), \
+        #        outputs.view(b, -1, c, h, w), masks_f
 
 class Encoder(nn.Module):
     def __init__(self):

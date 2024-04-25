@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--neighbor_length", type=int, default=10, help='Length of local neighboring frames.')
     parser.add_argument(
-        "--subvideo_length", type=int, default=200, help='Length of sub-video for long video inference.')
+        "--subvideo_length", type=int, default=999, help='Length of sub-video for long video inference.')
     parser.add_argument(
         "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(

@@ -1,4 +1,5 @@
 import torch
+from torch import empty
 from torch.cuda import empty_cache
 import torch.nn as nn
 import torch.nn.functional as F
@@ -117,13 +118,17 @@ class BidirectionalPropagation(nn.Module):
             if 'backward' in module_name:
                 feats[module_name] = feats[module_name][::-1]
 
-        outputs = []
+        #outputs = []
+        outputs = empty([b,t,c,h,w])
         for i in range(0, t):
             align_feats = [feats[k].pop(0) for k in feats if k != 'spatial']
             align_feats = torch.cat(align_feats, dim=1)
-            outputs.append(self.fusion(align_feats))
-
-        return torch.stack(outputs, dim=1) + x
+            _feats = self.fusion(align_feats)
+#            outputs.append(_feats)
+            outputs[:,i,:,:,:] = _feats
+            
+#        outputs = torch.stack(outputs, dim=1)
+        return outputs.cuda().half() + x
 
 
 class deconv(nn.Module):
@@ -284,7 +289,8 @@ class RecurrentFlowCompleteNet(nn.Module):
         
         x = self.downsample(inputs)
         feat_e1 = self.encoder1(x)
-        x = x.cpu()
+        del x; empty_cache()
+#        x = x.cpu()
 
         feat_e2 = self.encoder2(feat_e1) # b c t h w
         feat_mid = self.mid_dilation(feat_e2) # b c t h w
@@ -301,8 +307,8 @@ class RecurrentFlowCompleteNet(nn.Module):
         feat_d2 = self.decoder2(feat_prop) + feat_e1
         del feat_e1, feat_prop; empty_cache()
 
-        _, c, _, h_f, w_f = x.shape
-        x = x.permute(0,2,1,3,4).contiguous().view(-1, c, h_f, w_f) # b*t c h w
+#        _, c, _, h_f, w_f = x.shape
+#        x = x.permute(0,2,1,3,4).contiguous().view(-1, c, h_f, w_f) # b*t c h w
 
         feat_d1 = self.decoder1(feat_d2)
         del feat_d2; empty_cache()
