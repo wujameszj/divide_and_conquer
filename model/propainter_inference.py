@@ -331,9 +331,11 @@ class InpaintGenerator(BaseNetwork):
         ).cuda().half()).cpu()
 
         _, c, h, w = enc_feat.size()
-        local_feat = enc_feat.view(b, t, c, h, w)[:, :l_t, ...]
-        ref_feat = enc_feat.view(b, t, c, h, w)[:, l_t:, ...]
         fold_feat_size = (h, w)
+
+        _enc_feat = enc_feat.view(b, t, c, h, w)
+        local_feat = _enc_feat[:, :l_t, ...]
+        ref_feat = _enc_feat[:, l_t:, ...]
 
         ds_flows_f = F.interpolate(completed_flows[0].view(-1, 2, ori_h, ori_w), scale_factor=1/4, mode='bilinear', align_corners=False).view(b, l_t-1, 2, h, w)/4.0
         ds_flows_b = F.interpolate(completed_flows[1].view(-1, 2, ori_h, ori_w), scale_factor=1/4, mode='bilinear', align_corners=False).view(b, l_t-1, 2, h, w)/4.0
@@ -344,12 +346,8 @@ class InpaintGenerator(BaseNetwork):
             scale_factor=1/4, mode='nearest'
         ).cpu().view(b, l_t, 1, h, w)
 
-        if self.training:
-            mask_pool_l = self.max_pool(ds_mask_in.view(-1, 1, h, w))
-            mask_pool_l = mask_pool_l.view(b, t, 1, mask_pool_l.size(-2), mask_pool_l.size(-1))
-        else:
-            mask_pool_l = self.max_pool(ds_mask_in_local.view(-1, 1, h, w))
-            mask_pool_l = mask_pool_l.view(b, l_t, 1, mask_pool_l.size(-2), mask_pool_l.size(-1))
+        mask_pool_l = self.max_pool(ds_mask_in_local.view(-1, 1, h, w))
+        mask_pool_l = mask_pool_l.view(b, l_t, 1, mask_pool_l.size(-2), mask_pool_l.size(-1))
 
         prop_mask_in = torch.cat([ds_mask_in_local, ds_mask_updated_local], dim=2)
         _, _, local_feat, _ = self.feat_prop_module(
@@ -358,6 +356,7 @@ class InpaintGenerator(BaseNetwork):
             ds_flows_b.cuda().half(),
             prop_mask_in.cuda().half(),
             interpolation)
+        empty_cache()
 
         local_feat = local_feat.cpu()
         enc_feat = torch.cat((local_feat, ref_feat), dim=1)
@@ -372,14 +371,10 @@ class InpaintGenerator(BaseNetwork):
         trans_feat = trans_feat.view(b, t, -1, h, w)
         enc_feat = enc_feat + trans_feat
 
-        if self.training:
-            output = self.decoder(enc_feat.view(-1, c, h, w).cuda().half())
-            output = torch.tanh(output).view(b, t, 3, ori_h, ori_w)
-        else:
-            output = self.decoder(enc_feat[:, :l_t].view(-1, c, h, w).cuda().half()).cpu()
-            output = torch.tanh(output).view(b, l_t, 3, ori_h, ori_w)
-        empty_cache()
+        output = self.decoder(enc_feat[:, :l_t].view(-1, c, h, w).cuda().half()).cpu()
+        output = torch.tanh(output).view(b, l_t, 3, ori_h, ori_w)
 
+        empty_cache()
         return output
 
 

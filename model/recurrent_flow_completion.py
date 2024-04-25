@@ -282,13 +282,13 @@ class RecurrentFlowCompleteNet(nn.Module):
         b, t, _, h, w = masked_flows.size()
         masked_flows = masked_flows.permute(0,2,1,3,4)
         masks = masks.permute(0,2,1,3,4)
-
-        inputs = torch.cat((
+        
+        x = self.downsample(
+            torch.cat((
             masked_flows.cuda().half(),
             masks.cuda().half()), dim=1)
-        
-        x = self.downsample(inputs)
-        del inputs; empty_cache()
+        )
+
         feat_e1 = self.encoder1(x)
         del x; empty_cache()
 
@@ -341,8 +341,6 @@ class RecurrentFlowCompleteNet(nn.Module):
         pred_flows_backward, pred_edges_backward = self.forward(masked_flows_backward, masks_backward)
 
         pred_flows_backward = torch.flip(pred_flows_backward, dims=[1])
-        # if self.training:
-        #     pred_edges_backward = torch.flip(pred_edges_backward, dims=[1])
 
         return [pred_flows_forward, pred_flows_backward], [pred_edges_forward, pred_edges_backward]
 
