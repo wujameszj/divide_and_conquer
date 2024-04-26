@@ -363,8 +363,8 @@ class InpaintGenerator(BaseNetwork):
         trans_feat = self.ss(enc_feat.view(-1, c, h, w).cuda().half(), b, fold_feat_size)
         mask_pool_l = rearrange(mask_pool_l, 'b t c h w -> b t h w c').contiguous()
 
-        trans_feat = self.transformers(trans_feat, fold_feat_size, mask_pool_l, t_dilation=t_dilation)  # for some reason, leaving mask_pool_l on cpu does not produce error
         empty_cache()
+        trans_feat = self.transformers(trans_feat, fold_feat_size, mask_pool_l, t_dilation=t_dilation)  # for some reason, leaving mask_pool_l on cpu does not produce error
 
         trans_feat = self.sc(trans_feat, t, fold_feat_size).cpu()
         trans_feat = trans_feat.view(b, t, -1, h, w)
