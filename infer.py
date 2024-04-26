@@ -145,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-o', '--output', type=str, default='results', help='Output folder. Default: results')
     parser.add_argument(
-        "--resize_ratio", type=float, default=1.0, help='Resize scale for processing video.')
+        '-p', "--resize_ratio", type=float, default=1.0, help='Resize scale for processing video.')
     parser.add_argument(
         '--height', type=int, default=-1, help='Height of the processing video.')
     parser.add_argument(
@@ -411,8 +411,9 @@ if __name__ == '__main__':
 
                 pred_img_pil = Image.fromarray(pred_img[i].astype('uint8'))
                 pred_img_pil = pred_img_pil.resize((1280,720), Image.LANCZOS)
-                pred_img_up = np.array(pred_img_pil)
-                img = np.array(pred_img_up).astype(np.uint8) * ori_binary_masks[i] \
+                pred_img_up = np.array(pred_img_pil).astype(np.uint8) 
+                
+                img = pred_img_up * ori_binary_masks[i] \
                     + ori_reso_frames[idx] * (1 - ori_binary_masks[i])
 
                 if comp_frames[idx] is None:

@@ -1,6 +1,7 @@
 import math
 from functools import reduce
 import torch
+from torch.cuda import empty_cache
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -305,6 +306,7 @@ class TemporalSparseTransformer(nn.Module):
         shortcut = x
         x = self.norm1(x)
         att_x = self.attention(x, mask, T_ind)
+        empty_cache()
 
         # FFN
         x = shortcut + att_x
