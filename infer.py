@@ -154,9 +154,11 @@ if __name__ == '__main__':
     parser.add_argument('--record_time', action='store_true')
     parser.add_argument('--vram_stat', action='store_true')
     parser.add_argument('--keep_pbar', action='store_true')
+    parser.add_argument('--print_args', action='store_true')
     parser.add_argument("--skip_frame",type=int, default=0)
     args = parser.parse_args()
 
+    if args.print_args: print(vars(args))
     if args.record_time: st = time()
 
     frames, fps, size, video_name = read_frame_from_videos(args.video)
