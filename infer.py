@@ -49,19 +49,13 @@ def resize_frames(frames, size=None, algorithm=Image.LANCZOS):
 
 
 def read_frame_from_videos(frame_root):
-    if frame_root.endswith(('mp4', 'mov', 'avi', 'MP4', 'MOV', 'AVI')): # input video path
-        video_name = os.path.basename(frame_root)[:-4]
-        vframes, aframes, info = torchvision.io.read_video(filename=frame_root, pts_unit='sec') # RGB
-        frames = list(vframes.numpy())
-        frames = [Image.fromarray(f) for f in frames]
-        fps = info['video_fps']
-    else:
-        video_name = os.path.basename(frame_root)
-        frames = []
-        fr_lst = sorted(os.listdir(frame_root))
-        for fr in tqdm(fr_lst, leave=False, desc='reading frames'):
-            frames.append(Image.open(os.path.join(frame_root, fr)))
-        fps = None
+    
+    video_name = os.path.basename(frame_root)
+    frames = []
+    fr_lst = sorted(os.listdir(frame_root))
+    for fr in tqdm(fr_lst, leave=False, desc='reading frames'):
+        frames.append(Image.open(os.path.join(frame_root, fr)))
+    fps = None
     size = frames[0].size
 
     return frames, fps, size, video_name
@@ -79,12 +73,9 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorith
     masks_dilated = []
     flow_masks = []
     
-    if mpath.endswith(('jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG')): # input single img path
-       masks_img = [Image.open(mpath)]
-    else:  
-        mnames = sorted(os.listdir(mpath))
-        for mp in mnames:
-            masks_img.append(Image.open(os.path.join(mpath, mp)))
+    mnames = sorted(os.listdir(mpath))
+    for mp in mnames:
+        masks_img.append(Image.open(os.path.join(mpath, mp)))
           
     for mask_img in tqdm(masks_img, leave=False, desc='reading masks'):
         if size is not None:
@@ -107,10 +98,6 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorith
             mask_img = binary_mask(mask_img).astype(np.uint8)
         masks_dilated.append(Image.fromarray(mask_img * 255))
     
-    if len(masks_img) == 1:
-        flow_masks = flow_masks * length
-        masks_dilated = masks_dilated * length
-
     return flow_masks, masks_dilated
 
 
@@ -412,7 +399,7 @@ if __name__ == '__main__':
                 pred_img_pil = Image.fromarray(pred_img[i].astype('uint8'))
                 pred_img_pil = pred_img_pil.resize((1280,720), Image.LANCZOS)
                 pred_img_up = np.array(pred_img_pil).astype(np.uint8) 
-                
+
                 img = pred_img_up * ori_binary_masks[i] \
                     + ori_reso_frames[idx] * (1 - ori_binary_masks[i])
 
