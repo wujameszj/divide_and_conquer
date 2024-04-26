@@ -132,7 +132,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-o', '--output', type=str, default='results', help='Output folder. Default: results')
     parser.add_argument(
-        '-p', "--resize_ratio", type=float, default=1.0, help='Resize scale for processing video.')
+        '-s', "--resize_ratio", type=float, default=1.0, help='Resize scale for processing video.')
     parser.add_argument(
         '--height', type=int, default=-1, help='Height of the processing video.')
     parser.add_argument(
@@ -140,11 +140,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mask_dilation', type=int, default=4, help='Mask dilation for video and flow masking.')
     parser.add_argument(
-        '-t', "--ref_stride", type=int, default=40, help='Stride of global reference frames.')
+        '-t', "--ref_stride", type=int, default=30, help='Stride of global reference frames.')
     parser.add_argument(
-        '-n', "--neighbor_length", type=int, default=40, help='Length of local neighboring frames.')
+        '-n', "--neighbor_length", type=int, default=30, help='Length of local neighboring frames.')
     parser.add_argument(
-        "--subvideo_length", type=int, default=999, help='Length of sub-video for long video inference.')
+        '-v', "--subvideo_length", type=int, default=200, help='Length of sub-video for long video inference.')
     parser.add_argument(
         '-r',  "--raft_iter", type=int, default=20, help='Iterations for RAFT inference.')
     parser.add_argument(
