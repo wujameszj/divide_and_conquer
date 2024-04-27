@@ -53,7 +53,7 @@ def read_frame_from_videos(frame_root):
     video_name = os.path.basename(frame_root)
     frames = []
     fr_lst = sorted(os.listdir(frame_root))
-    for fr in tqdm(fr_lst, leave=False, desc='reading frames'):
+    for fr in tqdm(fr_lst, leave=False, desc='reading frames', disable=len(fr_lst)<720):
         frames.append(Image.open(os.path.join(frame_root, fr)))
     fps = None
     size = frames[0].size
@@ -77,7 +77,7 @@ def read_mask(mpath, length, size, flow_mask_dilates=8, mask_dilates=5, algorith
     for mp in mnames:
         masks_img.append(Image.open(os.path.join(mpath, mp)))
           
-    for mask_img in tqdm(masks_img, leave=False, desc='reading masks'):
+    for mask_img in tqdm(masks_img, leave=False, desc='reading masks', disable=len(masks_img)<720):
         if size is not None:
             mask_img = mask_img.resize(size, algorithm)
         mask_img = np.array(mask_img.convert('L'))
@@ -158,15 +158,15 @@ if __name__ == '__main__':
     parser.add_argument("--skip_frame",type=int, default=0)
     args = parser.parse_args()
 
-    if args.print_args: print(vars(args))
+    if args.print_args: print(vars(args), end='')
     if args.record_time: st = time()
 
     frames, fps, size, video_name = read_frame_from_videos(args.video)
     ori_reso_frames = frames
 
-    if not args.width == -1 and not args.height == -1:
+    if args.width != -1 and args.height != -1:
         size = (args.width, args.height)
-    if not args.resize_ratio == 1.0:
+    if args.resize_ratio != 1.0:
         size = (int(args.resize_ratio * size[0]), int(args.resize_ratio * size[1]))
 
     frames, size, out_size = resize_frames(frames, size)
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     w, h = size
 
 
-    frames = to_tensors()(frames).unsqueeze(0) * 2 - 1    
+    frames = to_tensors()(frames).unsqueeze(0) * 2 - 1
     flow_masks = to_tensors()(flow_masks).unsqueeze(0)
     masks_dilated = to_tensors()(masks_dilated).unsqueeze(0)
 
@@ -413,7 +413,7 @@ if __name__ == '__main__':
                 comp_frames[idx] = comp_frames[idx].astype(np.uint8)
 
 
-    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')    
+    print(f'  Peak allocated: {round(max_memory_allocated()/1024**3, 2)} GB.', f' Peak reserved: {round(max_memory_reserved()/1024**3, 2)} GB.')
     reset_peak_memory_stats()
 
 
@@ -426,5 +426,5 @@ if __name__ == '__main__':
 #        print(f'All results are saved in {save_root}.')
 
     if args.record_time:
-        print(f'Took {round((time()-st)/60, 2)} minutes')
+        print(f'Took {round((time()-st)/60, 2)} minutes', end='')
     empty_cache()
