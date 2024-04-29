@@ -55,10 +55,9 @@ def read_frame_from_videos(frame_root):
     fr_lst = sorted(os.listdir(frame_root))
     for fr in tqdm(fr_lst, leave=False, desc='reading frames', disable=len(fr_lst)<720):
         frames.append(Image.open(os.path.join(frame_root, fr)))
-    fps = None
     size = frames[0].size
 
-    return frames, fps, size, video_name
+    return frames, size, video_name, fr_lst
 
 
 def binary_mask(mask, th=0.1):
@@ -161,7 +160,7 @@ if __name__ == '__main__':
     if args.print_args: print(vars(args), end='')
     if args.record_time: st = time()
 
-    frames, fps, size, video_name = read_frame_from_videos(args.video)
+    frames, size, video_name, filenames = read_frame_from_videos(args.video)
     ori_reso_frames = frames
 
     if args.width != -1 and args.height != -1:
@@ -418,10 +417,10 @@ if __name__ == '__main__':
 
 
     if args.save_frames:
-        for idx in trange(args.skip_frame, video_length, leave=False, desc='saving results'):
+        for idx in trange(args.skip_frame, video_length, leave=False, desc='saving results', disable=len(filenames)<720):
             f = comp_frames[idx]
             f = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
-            img_save_root = os.path.join(save_root, str(idx).zfill(4)+'.png')
+            img_save_root = os.path.join(save_root, filenames[idx])
             imwrite(f, img_save_root)
 #        print(f'All results are saved in {save_root}.')
 
