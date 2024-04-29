@@ -26,11 +26,12 @@ parser.add_argument('-m', '--mask')
 parser.add_argument('-o', '--output')
 parser.add_argument('--model', type=str, default='~/ProPainter/weights/ProPainter.pth')
 parser.add_argument('-r', "--raft_iter", type=int, default=10, help='Iterations for RAFT inference.')
-parser.add_argument('-s', "--resize_ratio", type=float, default=.6, help='Resize scale for processing video.')
+parser.add_argument('-s', "--resize_ratio", type=float, default=.5, help='Resize scale for processing video.')
 parser.add_argument('-t', "--ref_stride", type=int, default=30, help='Stride of global reference frames.')
 parser.add_argument('-n', "--neighbor_length", type=int, default=30, help='Length of local neighboring frames.')
 parser.add_argument('-v', "--subvideo_length", type=int, default=200, help='Length of sub-video for long video inference.')
 args = parser.parse_args()
+
 
 def invert(path, save_directory):
     inverted_image = 255 - imread(path, cv2.IMREAD_GRAYSCALE)
@@ -51,8 +52,10 @@ def resize_images(inverted_mask_dir, resized_dir, size):
         img = img.resize(size, Image.LANCZOS)
         img.save(os.path.join(resized_dir, filename))
 
-min_subvideo_length = 130
-max_subvideo_length = 300
+
+min_subvideo_length = 200 if args.resize_ratio == .5 else 130
+max_subvideo_length = 500 if args.resize_ratio == .5 else 300
+
 
 # reference : read_mask func(inference_propainter.py)
 def dilate_mask(mask_inverted_dir, dilated_mask_dir, mask_dilates=5):
@@ -117,11 +120,13 @@ ds_masks_len = len(ds_masks)
 
 th_list = []
 for i in range(max_subvideo_length+1):
-    if i <= 200:
-        th_list.append(int((15*1024-31.45013*i-2663.58) / (0.14078*i+196.60))) # resize 0.6
-    else:
-        th_list.append(int((15.5*1024-31.45013*200-2663.58) / (0.14078*200+196.60)))
-
+    if args.resize_ratio == .5:
+        th_list.append(int((15*1024-0.16481*i-6523.19) / (0.8749*i+51.14))) # resize 0.5, 95% quantile regression
+    elif args.resize_ratio == .6:
+        if i <= 200:
+            th_list.append(int((14*1024-31.45013*i-2663.58) / (0.14078*i+196.60))) # resize 0.6
+        else:
+            th_list.append(int((14*1024-31.45013*200-2663.58) / (0.14078*200-196.60)))
 
 divide_list = [] # i.e. [[0, 19], [20, 39], [40, 60], ...]
 
@@ -130,9 +135,9 @@ use_frame = min_subvideo_length # minimum subvideo length
 while start_idx < ds_masks_len:
     end_idx = min(ds_masks_len, start_idx + use_frame)
     mask_area_results = []
-    for i in range(start_idx, end_idx, 15):
+    for i in range(start_idx, end_idx, args.neighbor_length//2):
         pixel_sum = None
-        for j in range(max(i-15, start_idx), min(i+15, end_idx)):
+        for j in range(max(i - args.neighbor_length//2, start_idx), min(i + args.neighbor_length//2, end_idx)):
             ds_mask_name = ds_masks[j]
             ds_mask_image = Image.open(os.path.join(downsampled_mask_dir, ds_mask_name))
             ds_mask_image_np = np.array(ds_mask_image)
@@ -141,7 +146,7 @@ while start_idx < ds_masks_len:
 
         non_zero_pixels = np.count_nonzero(pixel_sum)
         mask_area_results.append(non_zero_pixels)
-    
+
     if max(mask_area_results) < th_list[use_frame] and use_frame < max_subvideo_length:
         use_frame = use_frame + 1
     else:
