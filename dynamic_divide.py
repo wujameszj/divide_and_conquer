@@ -20,7 +20,7 @@ import torch.nn as nn
 
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-i', '--input')
 parser.add_argument('-m', '--mask')
 parser.add_argument('-o', '--output')
@@ -30,6 +30,8 @@ parser.add_argument('-s', "--resize_ratio", type=float, default=.5, help='Resize
 parser.add_argument('-t', "--ref_stride", type=int, default=30, help='Stride of global reference frames.')
 parser.add_argument('-n', "--neighbor_length", type=int, default=30, help='Length of local neighboring frames.')
 parser.add_argument('-v', "--subvideo_length", type=int, default=200, help='Length of sub-video for long video inference.')
+parser.add_argument('-h', '--height', type=int, default=-1, help='Height of the processing video.')
+parser.add_argument('-w', '--width', type=int, default=-1, help='Width of the processing video.')
 args = parser.parse_args()
 
 
@@ -53,8 +55,11 @@ def resize_images(inverted_mask_dir, resized_dir, size):
         img.save(os.path.join(resized_dir, filename))
 
 
-min_subvideo_length = 200 if args.resize_ratio == .5 else 130
-max_subvideo_length = 500 if args.resize_ratio == .5 else 300
+if args.width == 728 and args.height == 408:
+    min_subvideo_length, max_subvideo_length = 40, 100
+else:
+    min_subvideo_length = 200 if args.resize_ratio == .5 else 130
+    max_subvideo_length = 500 if args.resize_ratio == .5 else 300
 
 
 # reference : read_mask func(inference_propainter.py)
@@ -120,8 +125,10 @@ ds_masks_len = len(ds_masks)
 
 th_list = []
 for i in range(max_subvideo_length+1):
-    if args.resize_ratio == .5:
-        th_list.append(int((15*1024-0.16481*i-6523.19) / (0.8749*i+51.14))) # resize 0.5, 95% quantile regression
+    if args.width == 728 and args.height == 408:
+        th_list.append(int( (12.0*1024-12.99246*i-7510.35) / (0.3754*i+182.76) )) # resize 0.5, neighbor length 40, ref stride 20, subvideo length 100, 95% quantile regression
+    elif args.resize_ratio == .5:
+        th_list.append(int((14*1024-0.16481*i-6523.19) / (0.8749*i+51.14))) # resize 0.5, 95% quantile regression
     elif args.resize_ratio == .6:
         if i <= 200:
             th_list.append(int((14*1024-31.45013*i-2663.58) / (0.14078*i+196.60))) # resize 0.6
@@ -158,8 +165,8 @@ while start_idx < ds_masks_len:
 
 
 old_start_idx = divide_list[-1][0]
-if ds_masks_len - old_start_idx < 200:
-    divide_list[-1][0] = ds_masks_len - 200
+if ds_masks_len - old_start_idx < 50:
+    divide_list[-1][0] = ds_masks_len - 50
 skip_frame = old_start_idx - divide_list[-1][0]
 
 
@@ -186,7 +193,8 @@ for i, subvideo in enumerate(divide_list):
         shutil.copy(os.path.join(input_color_dir, color_image), temp_color_dir)
         shutil.copy(os.path.join(input_mask_dir_inverted, mask_image), temp_mask_dir)
 
-    cmd = f'python infer.py -r {args.raft_iter} -s {args.resize_ratio} -n {args.neighbor_length} -v {args.subvideo_length} -t {args.ref_stride} --model {args.model} -i {temp_color_dir} -m {temp_mask_dir} -o {output_subdir} --save_frames' \
+#    cmd = f'python infer.py -r {args.raft_iter} -s {args.resize_ratio} -n {args.neighbor_length} -v {args.subvideo_length} -t {args.ref_stride} --model {args.model} -i {temp_color_dir} -m {temp_mask_dir} -o {output_subdir} --save_frames' \
+    cmd = f'python infer.py -r {args.raft_iter} -h {args.height} -w {args.width} -n {args.neighbor_length} -v {args.subvideo_length} -t {args.ref_stride} --model {args.model} -i {temp_color_dir} -m {temp_mask_dir} -o {output_subdir} --save_frames' \
         + (f' --skip_frame {skip_frame}' if subvideo==divide_list[-1] else '') + (' --print_args' if i==0 or subvideo==divide_list[-1] else '')
     os.system(cmd)
 

@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = get_device()
     
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
         '-i', '--video', type=str, default='inputs/object_removal/bmx-trees', help='Path of the input video or image folder.')
     parser.add_argument(
@@ -133,9 +133,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '-s', "--resize_ratio", type=float, default=1.0, help='Resize scale for processing video.')
     parser.add_argument(
-        '--height', type=int, default=-1, help='Height of the processing video.')
+        '-h', '--height', type=int, default=-1, help='Height of the processing video.')
     parser.add_argument(
-        '--width', type=int, default=-1, help='Width of the processing video.')
+        '-w', '--width', type=int, default=-1, help='Width of the processing video.')
     parser.add_argument(
         '--mask_dilation', type=int, default=4, help='Mask dilation for video and flow masking.')
     parser.add_argument(
