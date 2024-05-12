@@ -4,7 +4,7 @@ einops
 future
 numpy
 scipy
-opencv-python
+opencv-python-headless
 matplotlib
 scikit-image
 torch>=1.7.1
@@ -16,3 +16,4 @@ timm
 yapf
 tensorboard
 lpips
+SimpleITK
