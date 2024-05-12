@@ -1,0 +1,48 @@
+{
+    "seed": 2023,
+    "save_dir": "/dream/temp/models/",
+    "train_data_loader": {
+        "name": "712_400",
+        "video_root": "/dream/data/90scenes",
+        "flow_root": "/dream/temp/flow_712_400",
+        "w": 712,
+        "h": 400,
+        "num_local_frames": 10,
+        "num_ref_frames": 6,
+        "load_flow": true
+    },
+    "losses": {
+        "hole_weight": 1,
+        "valid_weight": 1,
+        "flow_weight": 1,
+        "adversarial_weight": 0.01,
+        "GAN_LOSS": "hinge",
+        "perceptual_weight": 0
+    },
+    "model": {
+        "net": "propainter",
+        "no_dis": 0,
+        "load_d": 1,
+        "interp_mode": "nearest"
+    },
+    "trainer": {
+        "version": "trainer",
+        "type": "Adam",
+        "beta1": 0,
+        "beta2": 0.99,
+        "lr": 5e-5,
+        "batch_size": 1,
+        "num_workers": 1,
+        "num_prefetch_queue": 1,
+        "log_freq": 100,
+        "save_freq": 2000,
+        "iterations": 400e3,
+        "scheduler": {
+            "type": "MultiStepLR",
+            "milestones": [
+                50e3, 100e3, 200e3, 250e3, 300e3
+            ],
+            "gamma": 0.5
+        }
+    }
+}
