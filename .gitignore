@@ -1,3 +1,18 @@
+data/scene*
+data/full_size
+data/90scenes
+data/files-archive
+temp/
+
+__pycache__
+
+
+
+
+#
+# Original ProPainter .gitignore
+#
+
 .vscode
 
 # ignored files
@@ -122,10 +137,10 @@ venv.bak/
 .mypy_cache/
 
 # project
-experiments_model/
-unreleased/
-results_eval/
-results/
-*debug*
-*old*
-*.sh
+#experiments_model/
+#unreleased/
+#results_eval/
+#results/
+#*debug*
+#*old*
+#*.sh
