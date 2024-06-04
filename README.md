@@ -36,8 +36,9 @@ This repo contains the code used for the [DREAMING](https://dreaming.grand-chall
 ```bibtex
    @misc{divideandconquer,
       title={{D}ivide and conquer: video inpainting for diminished reality in low-resource settings},
-      author={Wu, Zhou Ji and Seshimo, Ryosuke and Saito, Hideo and Isogawa, Mariko},
+      author={Wu, Zhou Ji$^*$ and Seshimo, Ryosuke$^*$ and Saito, Hideo and Isogawa, Mariko},
       year={2024}
+      note={$^*$ indicates equal contribution}
    }
 ```
 
