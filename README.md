@@ -1,4 +1,4 @@
-This repo contains the code used for the [DREAMING](https://dreaming.grand-challenge.org) challenege in ISBI 2024.
+This repo contains the code used for the [DREAMING](https://dreaming.grand-challenge.org) challenege in ISBI 2024. Also, this repo includes a subset of files originally from a private repo. If you notice any files that are missing, please let me know.
 
 
 <table>
@@ -36,7 +36,7 @@ This repo contains the code used for the [DREAMING](https://dreaming.grand-chall
 ```bibtex
    @misc{divideandconquer,
       title={{D}ivide and conquer: video inpainting for diminished reality in low-resource settings},
-      author={Wu, Zhou Ji$^*$ and Seshimo, Ryosuke$^*$ and Saito, Hideo and Isogawa, Mariko},
+      author={Zhou Ji Wu$^*$ and Ryosuke Seshimo$^*$ and Hideo Saito and Mariko Isogawa},
       year={2024}
       note={$^*$ indicates equal contribution}
    }
