@@ -1,10 +1,8 @@
-This repo contains the code used for the [DREAMING](https://dreaming.grand-challenge.org) challenege in ISBI 2024. Also, this repo includes a subset of files originally from a private repo. If you notice any files that are missing, please let me know.
+This repo contains the code used for the [DREAMING](https://dreaming.grand-challenge.org) challenege in ISBI 2024. Also, this repo includes a subset of files originally from a private repo. If you notice any files that are missing, please let us know.
 
 
-Left : input video
-
-Center : Baseline
-
+Left : input video<br>
+Center : Baseline<br>
 Right : Ours
 
 <table>
