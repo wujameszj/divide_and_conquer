@@ -6,7 +6,7 @@ This repo contains the code used for the [DREAMING](https://dreaming.grand-chall
    <td>
       <figure>
          <video width="320" height="240" controls>
-            <source src="assets/input.mp4" type="video/mp4">
+            <source src="assets/input.gif" type="video/mp4">
             Your browser does not support the video tag.
          </video>
          <figcaption style="text-align: center;">Input video</figcaption>
