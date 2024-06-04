@@ -2,7 +2,9 @@ This repo contains the code used for the [DREAMING](https://dreaming.grand-chall
 
 
 Left : input video
+
 Center : Baseline
+
 Right : Ours
 
 <table>
