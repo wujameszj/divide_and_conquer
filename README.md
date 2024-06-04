@@ -1,7 +1,7 @@
 This repo contains the code used for the [DREAMING](https://dreaming.grand-challenge.org) challenege in ISBI 2024. Also, this repo includes a subset of files originally from a private repo. If you notice any files that are missing, please let me know.
 
 
-<table>
+<!-- <table>
 <tr>
    <td>
       <figure>
@@ -29,6 +29,20 @@ This repo contains the code used for the [DREAMING](https://dreaming.grand-chall
          </video>
          <figcaption style="text-align: center;">Our method</figcaption>
       </figure>
+   </td>
+</tr>
+</table> -->
+
+<table>
+<tr>
+   <td> 
+      <img src="assets/input.gif">
+   </td>
+   <td> 
+      <img src="assets/baseline_result.gif">
+   </td>
+   <td>
+      <img src="assets/our_result.gif">
    </td>
 </tr>
 </table>
